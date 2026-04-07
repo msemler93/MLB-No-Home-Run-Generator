@@ -5,10 +5,12 @@ import analyzer
 import data_fetcher
 import odds_api
 
+near_misses = []
+
 # --- Page Configuration ---
 st.set_page_config(page_title="No-HR Triple Threat", page_icon="⚾", layout="wide")
 
-today_date = date.today().strftime('%A, %B %d, %Y')
+today_date = date.today().strftime("%A, %B %d, %Y")
 CURRENT_SEASON = 2026
 
 # --- Header Section ---
@@ -27,18 +29,26 @@ st.divider()
 # --- Main Action Button ---
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    analyze_button = st.button("🚀 Run Today's Triple Threat Analysis", use_container_width=True)
+    analyze_button = st.button(
+        "🚀 Run Today's Triple Threat Analysis", use_container_width=True
+    )
 
 if analyze_button:
-    with st.spinner('Cross-referencing Statcast, Matchups, Park Factors, and Live Odds...'):
+    with st.spinner(
+        "Cross-referencing Statcast, Matchups, Park Factors, and Live Odds..."
+    ):
         # Run the engine
-        certified_plays, near_misses =     analyzer.find_certified_plays(season_year=CURRENT_SEASON)
+        certified_plays, near_misses = analyzer.find_certified_plays(
+            season_year=CURRENT_SEASON
+        )
 
         st.divider()
 
         # --- Output Logic ---
         if len(certified_plays) > 0:
-            st.success(f"🔥 Found {len(certified_plays)} High-Probability Leg(s) for {today_date}.")
+            st.success(
+                f"🔥 Found {len(certified_plays)} High-Probability Leg(s) for {today_date}."
+            )
 
             # Display plays in a clean grid
             cols = st.columns(len(certified_plays) if len(certified_plays) < 3 else 3)
@@ -50,8 +60,13 @@ if analyze_button:
                     st.write(f"**Pitching For:** {play['pitcher_team']}")
                     st.write(f"**Opponent:** {play['vs']}")
                     st.write(f"**Reason:** {play['reason']}")
-                    st.metric(label="Park Factor", value=play['park_factor'], delta="Safe", delta_color="normal")
-                    st.metric(label="Vegas O/U Total", value=play['game_total'])
+                    st.metric(
+                        label="Park Factor",
+                        value=play["park_factor"],
+                        delta="Safe",
+                        delta_color="normal",
+                    )
+                    st.metric(label="Vegas O/U Total", value=play["game_total"])
                     # --- NEW WEATHER UI ---
                     st.markdown("---")
                     st.write("**Stadium Weather:**")
@@ -62,21 +77,27 @@ if analyze_button:
                     with weather_col2:
                         st.metric(label="Wind", value=f"{play['weather_wind']} mph")
 
-                    if play['weather_advantage']:
+                    if play["weather_advantage"]:
                         st.success("🧊 Cold/Windy: Favorable for No-HR.")
                     else:
                         st.info("🌤️ Neutral Weather.")
 
-            st.warning("These plays meet all Ground-Ball, Power-Fade, Oddsmaker, and Environment criteria.")
+            st.warning(
+                "These plays meet all Ground-Ball, Power-Fade, Oddsmaker, and Environment criteria."
+            )
 
         else:
             # The Skip Protocol
-            st.error(f"❌ **Skip Protocol Activated:** No matchups today hit the strict No-HR threshold. Do not force a bet.")
+            st.error(
+                f"❌ **Skip Protocol Activated:** No matchups today hit the strict No-HR threshold. Do not force a bet."
+            )
 
     if len(near_misses) > 0:
         st.divider()
         st.subheader("⚠️ The 'Near Miss' Board")
-        st.info("These games hit 3/4 filters. Great for finding outliers or 'gut' plays.")
+        st.info(
+            "These games hit 3/4 filters. Great for finding outliers or 'gut' plays."
+        )
         st.table(near_misses)
 
 st.divider()
@@ -97,6 +118,7 @@ with st.expander("View Power-Fade Teams & Safe Parks"):
     with data_col2:
         st.write("**Pitcher Friendly Parks (< 100)**")
         safe_parks = data_fetcher.get_safe_parks(100)
-        safe_parks_df = pd.DataFrame(list(safe_parks.items()), columns=['Stadium', 'HR Factor']).sort_values(by='HR Factor')
+        safe_parks_df = pd.DataFrame(
+            list(safe_parks.items()), columns=["Stadium", "HR Factor"]
+        ).sort_values(by="HR Factor")
         st.dataframe(safe_parks_df, hide_index=True)
-        
