@@ -73,11 +73,11 @@ if analyze_button:
             # The Skip Protocol
             st.error(f"❌ **Skip Protocol Activated:** No matchups today hit the strict No-HR threshold. Do not force a bet.")
 
-if len(near_misses) > 0:
-    st.divider()
-    st.subheader("⚠️ The 'Near Miss' Board")
-    st.info("These games hit 3/4 filters. Great for finding outliers or 'gut' plays.")
-    st.table(near_misses)
+    if len(near_misses) > 0:
+        st.divider()
+        st.subheader("⚠️ The 'Near Miss' Board")
+        st.info("These games hit 3/4 filters. Great for finding outliers or 'gut' plays.")
+        st.table(near_misses)
 
 st.divider()
 
