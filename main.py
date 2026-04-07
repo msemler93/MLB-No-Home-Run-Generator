@@ -52,6 +52,20 @@ if analyze_button:
                     st.write(f"**Reason:** {play['reason']}")
                     st.metric(label="Park Factor", value=play['park_factor'], delta="Safe", delta_color="normal")
                     st.metric(label="Vegas O/U Total", value=play['game_total'])
+                    # --- NEW WEATHER UI ---
+                    st.markdown("---")
+                    st.write("**Stadium Weather:**")
+
+                    weather_col1, weather_col2 = st.columns(2)
+                    with weather_col1:
+                        st.metric(label="Temp", value=f"{play['weather_temp']} °F")
+                    with weather_col2:
+                        st.metric(label="Wind", value=f"{play['weather_wind']} mph")
+
+                    if play['weather_advantage']:
+                        st.success("🧊 Cold/Windy: Favorable for No-HR.")
+                    else:
+                        st.info("🌤️ Neutral Weather.")
 
             st.warning("These plays meet all Ground-Ball, Power-Fade, Oddsmaker, and Environment criteria.")
 

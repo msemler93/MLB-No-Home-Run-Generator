@@ -2,6 +2,7 @@ import statsapi
 from datetime import date
 import data_fetcher
 import odds_api
+from data_fetcher import get_stadium_weather
 
 # Standardizing team names between APIs
 TEAM_MAPPING = {
@@ -48,6 +49,8 @@ def find_certified_plays(season_year=2026):
         # Environment Check: Is the stadium safe?
         if home_team not in safe_parks:
             continue
+            # Check the weather for the stadium
+            weather_data = get_stadium_weather(home_team)
         park_score = safe_parks[home_team]
 
         # Oddsmaker Check: Is the O/U Total 8.0 or lower?
@@ -65,7 +68,10 @@ def find_certified_plays(season_year=2026):
                     "vs": home_team,
                     "park_factor": park_score,
                     "game_total": game_total,
-                    "reason": f"Fading {home_team} (Bottom 10 Power)"
+                    "reason": f"Fading {home_team} (Bottom 10 Power)",
+                    "weather_temp": weather_data["temp"],
+                    "weather_wind": weather_data["wind"],
+                    "weather_advantage": weather_data["advantage"]
                 })
 
         # --- Evaluate Home Pitcher vs. Away Offense ---
@@ -78,7 +84,10 @@ def find_certified_plays(season_year=2026):
                     "vs": away_team,
                     "park_factor": park_score,
                     "game_total": game_total,
-                    "reason": f"Fading {away_team} (Bottom 10 Power)"
+                    "reason": f"Fading {away_team} (Bottom 10 Power)",
+                    "weather_temp": weather_data["temp"],
+                    "weather_wind": weather_data["wind"],
+                    "weather_advantage": weather_data["advantage"]
                 })
 
     return certified_plays
