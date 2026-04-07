@@ -3,4 +3,3 @@ pybaseball
 MLB-StatsAPI
 pandas
 requests
-streamlit
