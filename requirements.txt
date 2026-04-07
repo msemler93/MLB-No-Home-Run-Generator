@@ -1,4 +1,4 @@
-streamlits
+streamlit
 pybaseball
 MLB-StatsAPI
 pandas
