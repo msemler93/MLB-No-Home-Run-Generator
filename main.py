@@ -32,7 +32,7 @@ with col2:
 if analyze_button:
     with st.spinner('Cross-referencing Statcast, Matchups, Park Factors, and Live Odds...'):
         # Run the engine
-        certified_plays = analyzer.find_certified_plays(season_year=CURRENT_SEASON)
+        certified_plays, near_misses =     analyzer.find_certified_plays(season_year=CURRENT_SEASON)
 
         st.divider()
 
@@ -73,6 +73,12 @@ if analyze_button:
             # The Skip Protocol
             st.error(f"❌ **Skip Protocol Activated:** No matchups today hit the strict No-HR threshold. Do not force a bet.")
 
+if len(near_misses) > 0:
+    st.divider()
+    st.subheader("⚠️ The 'Near Miss' Board")
+    st.info("These games hit 3/4 filters. Great for finding outliers or 'gut' plays.")
+    st.table(near_misses)
+
 st.divider()
 
 # --- Underlying Data Display ---
@@ -93,3 +99,4 @@ with st.expander("View Power-Fade Teams & Safe Parks"):
         safe_parks = data_fetcher.get_safe_parks(100)
         safe_parks_df = pd.DataFrame(list(safe_parks.items()), columns=['Stadium', 'HR Factor']).sort_values(by='HR Factor')
         st.dataframe(safe_parks_df, hide_index=True)
+        

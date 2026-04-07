@@ -74,6 +74,7 @@ def find_certified_plays(season_year=2026):
     low_total_games = odds_api.get_low_total_games(8.0)
 
     certified_plays = []
+    near_misses = []
 
     # --- 2. Matchup Engine ---
     for game in games:
@@ -82,48 +83,68 @@ def find_certified_plays(season_year=2026):
         away_p = game.get('away_probable_pitcher', '')
         home_p = game.get('home_probable_pitcher', '')
 
-        # Environment Check: Is the stadium safe?
-        if home_team not in safe_parks:
-            continue
-            # Check the weather for the stadium
-            weather_data = get_stadium_weather(home_team)
-        park_score = safe_parks[home_team]
+        # --- Start the Scorecard for this game ---
+        score = 0
+        passed_filters = []
 
-        # Oddsmaker Check: Is the O/U Total 8.0 or lower?
-        if home_team not in low_total_games:
-            continue
-        game_total = low_total_games[home_team]
+        # 1. Weather Check (Fetch this first so we have the data)
+        weather_data = get_stadium_weather(home_team)
+        if weather_data["advantage"]:
+            score += 1
+            passed_filters.append("🧊 Weather")
 
-        # --- Evaluate Away Pitcher vs. Home Offense ---
+        # 2. Environment Check
+        park_score = safe_parks.get(home_team, 100)
+        if home_team in safe_parks:
+            score += 1
+            passed_filters.append("🏟️ Park")
+
+        # 3. Odds Check
+        game_total = low_total_games.get(home_team, 9.0)
+        if home_team in low_total_games:
+            score += 1
+            passed_filters.append("🎰 Vegas O/U")
+
+        # 4. Pitcher & Offense Matchup Check
+        # (This combines your two evaluation blocks into one clean check)
+        matchup_passed = False
+        reason = ""
+
+        # Check Away Pitcher vs Home Offense
         if away_p and any(name in away_p for name in elite_pitcher_names):
-            mapped_home_team = TEAM_MAPPING.get(home_team)
-            if mapped_home_team in weak_power_teams:
-                certified_plays.append({
-                    "pitcher": away_p,
-                    "pitcher_team": away_team,
-                    "vs": home_team,
-                    "park_factor": park_score,
-                    "game_total": game_total,
-                    "reason": f"Fading {home_team} (Bottom 10 Power)",
-                    "weather_temp": weather_data["temp"],
-                    "weather_wind": weather_data["wind"],
-                    "weather_advantage": weather_data["advantage"]
-                })
+            mapped_home = TEAM_MAPPING.get(home_team)
+            if mapped_home in weak_power_teams:
+                matchup_passed = True
+                reason = f"Fading {home_team} (Weak Power)"
 
-        # --- Evaluate Home Pitcher vs. Away Offense ---
+        # Check Home Pitcher vs Away Offense
         if home_p and any(name in home_p for name in elite_pitcher_names):
-            mapped_away_team = TEAM_MAPPING.get(away_team)
-            if mapped_away_team in weak_power_teams:
-                certified_plays.append({
-                    "pitcher": home_p,
-                    "pitcher_team": home_team,
-                    "vs": away_team,
-                    "park_factor": park_score,
-                    "game_total": game_total,
-                    "reason": f"Fading {away_team} (Bottom 10 Power)",
-                    "weather_temp": weather_data["temp"],
-                    "weather_wind": weather_data["wind"],
-                    "weather_advantage": weather_data["advantage"]
-                })
+            mapped_away = TEAM_MAPPING.get(away_team)
+            if mapped_away in weak_power_teams:
+                matchup_passed = True
+                reason = f"Fading {away_team} (Weak Power)"
 
-    return certified_plays
+        if matchup_passed:
+            score += 1
+            passed_filters.append("🎯 Matchup")
+
+        # --- Final Classification ---
+        data_to_save = {
+            "pitcher": away_p if "Fading" in reason and home_team in reason else home_p,
+            "vs": home_team if home_p == "" else away_team,
+            "reason": reason,
+            "park_factor": park_score,
+            "game_total": game_total,
+            "weather_temp": weather_data["temp"],
+            "weather_wind": weather_data["wind"],
+            "weather_advantage": weather_data["advantage"],
+            "score": score,
+            "passed": ", ".join(passed_filters)
+        }
+
+        if score >= 4:
+            certified_plays.append(data_to_save)
+        elif score == 3:
+            near_misses.append(data_to_save)
+            
+    return certified_plays, near_misses
