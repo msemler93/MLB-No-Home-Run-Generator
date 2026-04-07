@@ -2,12 +2,6 @@ import statsapi
 from datetime import date
 import data_fetcher
 import odds_api
-import requests
-
-import statsapi
-from datetime import date
-import data_fetcher
-import odds_api
 import requests # <--- Make sure this is here!
 
 # Dictionary mapping teams to their stadium latitude and longitude
@@ -46,8 +40,6 @@ def get_stadium_weather(home_team_name):
     except Exception as e:
         return {"temp": "Error", "wind": "Error", "advantage": False}
 
-# --- Your existing code continues below ---
-TEAM_MAPPING = { ...
 # Standardizing team names between APIs
 TEAM_MAPPING = {
     "Arizona Diamondbacks": "ARI", "Atlanta Braves": "ATL", "Baltimore Orioles": "BAL", 
