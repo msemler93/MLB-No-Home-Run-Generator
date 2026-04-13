@@ -1,5 +1,5 @@
 streamlit
-pybaseball>=2.2.7
+git+https://github.com/jldbc/pybaseball.git
 MLB-StatsAPI
 pandas
 requests
