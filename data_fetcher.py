@@ -5,7 +5,7 @@ import pandas as pd
 def get_elite_gb_pitchers(season: int):
     """
     Fetches qualified pitchers with elite Ground Ball % and low HR tendencies.
-    Criteria: GB% >= 45%, HR/9 < 1.0, and HR/FB < 10%.
+    Criteria: GB% >= 50%, HR/9 < 1.0, and HR/FB < 10%.
     """
     try:
         # Pull standard and advanced pitching stats from FanGraphs
@@ -13,7 +13,7 @@ def get_elite_gb_pitchers(season: int):
 
         # Apply the Triple Threat Pitching Filters
         elite_pitchers = pitching_data[
-            (pitching_data["GB%"] >= 0.45)
+            (pitching_data["GB%"] >= 0.50)
             & (pitching_data["HR/9"] < 1.0)
             & (pitching_data["HR/FB"] < 0.10)  # Added HR/FB for extra safety
         ].copy()
@@ -26,31 +26,38 @@ def get_elite_gb_pitchers(season: int):
         return pd.DataFrame()
 
 
-def get_power_fade_teams(season: int):
-    """
-    Identifies the bottom third of MLB offenses in power metrics.
-    Currently filters by the lowest 10 teams in ISO.
-    """
-    try:
-        # Pull standard team batting stats
-        team_batting = pyb.team_batting(season)
+        def get_power_fade_teams(season: int):
+            """
+            Identifies the bottom third of MLB offenses in power metrics.
+            Dynamically filters by the bottom 33rd percentile in ISO and HardHit%.
+            """
+            try:
+                # Pull standard team batting stats
+                team_batting = pyb.team_batting(season)
 
-        # Sort by ISO to find the bottom 10 (bottom third of the league)
-        weak_power_df = team_batting.sort_values(by="ISO", ascending=True).head(10)
+                # Calculate the 33rd percentile (bottom 1/3 threshold) dynamically
+                iso_threshold = team_batting["ISO"].quantile(0.33)
+                hardhit_threshold = team_batting["HardHit%"].quantile(0.33)
 
-        # Returning ISO, Slugging (SLG), and HardHit% to evaluate contact quality
-        columns_to_return = ["Team", "ISO", "SLG", "HR", "HardHit%"]
+                # Filter teams that fall below the threshold for BOTH metrics
+                weak_power_df = team_batting[
+                    (team_batting["ISO"] <= iso_threshold) & 
+                    (team_batting["HardHit%"] <= hardhit_threshold)
+                ].copy()
 
-        # Filter columns to only include those that exist in the dataframe (safeguard)
-        available_columns = [
-            col for col in columns_to_return if col in weak_power_df.columns
-        ]
+                # Returning ISO, Slugging (SLG), and HardHit% to evaluate contact quality
+                columns_to_return = ["Team", "ISO", "SLG", "HR", "HardHit%"]
 
-        return weak_power_df[available_columns]
+                # Filter columns to only include those that exist in the dataframe (safeguard)
+                available_columns = [
+                    col for col in columns_to_return if col in weak_power_df.columns
+                ]
 
-    except Exception as e:
-        print(f"Error fetching batting data: {e}")
-        return pd.DataFrame()
+                return weak_power_df[available_columns]
+
+            except Exception as e:
+                print(f"Error fetching batting data: {e}")
+                return pd.DataFrame()
 
 
 def get_park_factors():
