@@ -29,26 +29,37 @@ def get_elite_gb_pitchers(season: int):
 def get_power_fade_teams(season: int):
     """
     Identifies the bottom third of MLB offenses in power metrics.
-    Dynamically filters by the bottom 33rd percentile in ISO and HardHit%.
+    Dynamically filters by the bottom 33rd percentile in ISO and Hard Contact.
     """
     try:
         # Pull standard team batting stats
         team_batting = pyb.team_batting(season)
 
-        # Calculate the 33rd percentile (bottom 1/3 threshold) dynamically
+        # 1. Calculate the 33rd percentile for ISO (Always exists)
         iso_threshold = team_batting["ISO"].quantile(0.33)
-        hardhit_threshold = team_batting["HardHit%"].quantile(0.33)
 
-        # Filter teams that fall below the threshold for BOTH metrics
-        weak_power_df = team_batting[
-            (team_batting["ISO"] <= iso_threshold)
-            & (team_batting["HardHit%"] <= hardhit_threshold)
-        ].copy()
+        # 2. Safely locate the Hard Contact column (FanGraphs changes this sometimes)
+        if "HardHit%" in team_batting.columns:
+            hard_col = "HardHit%"
+        elif "Hard%" in team_batting.columns:
+            hard_col = "Hard%"
+        else:
+            hard_col = None
 
-        # Returning ISO, Slugging (SLG), and HardHit% to evaluate contact quality
-        columns_to_return = ["Team", "ISO", "SLG", "HR", "HardHit%"]
+        # 3. Filter the teams
+        if hard_col:
+            hardhit_threshold = team_batting[hard_col].quantile(0.33)
+            weak_power_df = team_batting[
+                (team_batting["ISO"] <= iso_threshold)
+                & (team_batting[hard_col] <= hardhit_threshold)
+            ].copy()
+        else:
+            # Fallback if FanGraphs hides the Hard Contact data
+            weak_power_df = team_batting[(team_batting["ISO"] <= iso_threshold)].copy()
 
-        # Filter columns to only include those that exist in the dataframe
+        # 4. Return the relevant columns
+        columns_to_return = ["Team", "ISO", "SLG", "HR", "HardHit%", "Hard%"]
+
         available_columns = [
             col for col in columns_to_return if col in weak_power_df.columns
         ]
