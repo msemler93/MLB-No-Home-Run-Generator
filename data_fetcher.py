@@ -21,9 +21,9 @@ def get_elite_gb_pitchers(season: int):
         # Return only the necessary columns to keep memory usage low
         return elite_pitchers[["Name", "Team", "GB%", "HR/9", "HR/FB"]]
 
-        except Exception as e:
+    except Exception as e:
         print(f"Error fetching pitching data: {e}")
-            return pd.DataFrame()
+        return pd.DataFrame()
 
 
  def get_power_fade_teams(season: int):
