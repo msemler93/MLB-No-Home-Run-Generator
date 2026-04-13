@@ -1,69 +1,63 @@
 import pybaseball as pyb
 import pandas as pd
+import requests
 
 
 def get_elite_gb_pitchers(season: int):
     """
-    Fetches qualified pitchers with elite Ground Ball % and low HR tendencies.
-    Criteria: GB% >= 50%, HR/9 < 1.0, and HR/FB < 10%.
+    Pivots to Baseball Reference to bypass the FanGraphs ban.
+    Filters strictly for pitchers allowing less than 1.0 HR/9.
     """
+    import streamlit as st
+
     try:
-        # Pull standard and advanced pitching stats from FanGraphs
-        pitching_data = pyb.pitching_stats(season, qual=1)
+        # Pull pitching stats from Baseball Reference
+        pitching_data = pyb.pitching_stats_bref(season)
 
-        # Apply the Triple Threat Pitching Filters
-        elite_pitchers = pitching_data[
-            (pitching_data["GB%"] >= 0.50)
-            & (pitching_data["HR/9"] < 1.0)
-            & (pitching_data["HR/FB"] < 0.10)
-        ].copy()
+        # Filter for pitchers allowing less than 1.0 HR per 9 innings
+        elite_pitchers = pitching_data[(pitching_data["HR9"] < 1.0)].copy()
 
-        # Return only the necessary columns to keep memory usage low
-        return elite_pitchers[["Name", "Team", "GB%", "HR/9", "HR/FB"]]
+        # Rename 'Tm' to 'Team' to match your engine's logic
+        elite_pitchers.rename(columns={"Tm": "Team"}, inplace=True)
+
+        return elite_pitchers[["Name", "Team", "HR9"]]
 
     except Exception as e:
-        print(f"Error fetching pitching data: {e}")
+        st.error(f"🚨 PITCHING DATA CRASH: {type(e).__name__} - {e}")
         return pd.DataFrame()
 
-        def get_power_fade_teams(season: int):
-            """
-            Bypasses FanGraphs entirely by pivoting to Baseball Reference.
-            Filters by the bottom 33rd percentile in Slugging Percentage (SLG).
-            """
-            import streamlit as st
-            import pandas as pd
-            import pybaseball as pyb
 
-            try:
-                # 1. Pull PLAYER batting stats from Baseball Reference (Bypasses FanGraphs!)
-                bref_data = pyb.batting_stats_bref(season)
+def get_power_fade_teams(season: int):
+    """
+    Bypasses FanGraphs entirely by pivoting to Baseball Reference.
+    Filters by the bottom 33rd percentile in Slugging Percentage (SLG).
+    """
+    import streamlit as st
 
-                # 2. Group by Team (BRef uses 'Tm' instead of 'Team')
-                # We will use raw Slugging (SLG) and Total HRs as our power metrics
-                team_batting = (
-                    bref_data.groupby("Tm")
-                    .agg({"SLG": "mean", "HR": "sum"})
-                    .reset_index()
-                )
-                team_batting.rename(columns={"Tm": "Team"}, inplace=True)
+    try:
+        # Pull PLAYER batting stats from Baseball Reference
+        bref_data = pyb.batting_stats_bref(season)
 
-                # 3. Calculate the 33rd percentile (bottom 1/3 threshold) for Slugging
-                slg_threshold = team_batting["SLG"].quantile(0.33)
+        # Group by Team and calculate average SLG and total HRs
+        team_batting = (
+            bref_data.groupby("Tm").agg({"SLG": "mean", "HR": "sum"}).reset_index()
+        )
+        team_batting.rename(columns={"Tm": "Team"}, inplace=True)
 
-                # 4. Filter the teams based on the new threshold
-                weak_power_df = team_batting[
-                    (team_batting["SLG"] <= slg_threshold)
-                ].copy()
+        # Calculate the 33rd percentile threshold for Slugging
+        slg_threshold = team_batting["SLG"].quantile(0.33)
 
-                # 5. Format the numbers to look clean on the dashboard
-                weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
+        # Filter the teams
+        weak_power_df = team_batting[(team_batting["SLG"] <= slg_threshold)].copy()
 
-                # Return the clean BRef data
-                return weak_power_df[["Team", "SLG", "HR"]]
+        # Format the numbers to look clean on the dashboard
+        weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
-            except Exception as e:
-                st.error(f"🚨 ENGINE CRASH REPORT: {type(e).__name__} - {e}")
-                return pd.DataFrame()
+        return weak_power_df[["Team", "SLG", "HR"]]
+
+    except Exception as e:
+        st.error(f"🚨 BATTING DATA CRASH: {type(e).__name__} - {e}")
+        return pd.DataFrame()
 
 
 def get_park_factors():
