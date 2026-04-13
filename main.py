@@ -57,7 +57,7 @@ if analyze_button:
                 with cols[i % 3]:
                     st.container(border=True)
                     st.subheader(f"✅ {play['pitcher']}")
-                    st.write(f"**Pitching For:** {play['pitcher_team']}")
+                    st.write(f"**Matchup:** {play['pitcher']} vs {play['vs']}")
                     st.write(f"**Opponent:** {play['vs']}")
                     st.write(f"**Reason:** {play['reason']}")
                     st.metric(
