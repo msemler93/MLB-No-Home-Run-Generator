@@ -26,7 +26,7 @@ def get_elite_gb_pitchers(season: int):
         return pd.DataFrame()
 
 
-        def get_power_fade_teams(season: int):
+ def get_power_fade_teams(season: int):
             """
             Identifies the bottom third of MLB offenses in power metrics.
             Dynamically filters by the bottom 33rd percentile in ISO and HardHit%.
