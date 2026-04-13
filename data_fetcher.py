@@ -186,7 +186,6 @@ def get_power_fade_teams(season: int):
         # 6. Format the numbers to look clean on the dashboard
         weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
-        # Return the clean BRef data mapped perfectly for your analyzer!
         return weak_power_df[["Team", "SLG", "HR"]]
 
     except Exception as e:
