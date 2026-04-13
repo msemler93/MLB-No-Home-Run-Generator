@@ -52,36 +52,136 @@ def get_elite_gb_pitchers(season: int):
 
 def get_power_fade_teams(season: int):
     """
-    Bypasses FanGraphs entirely by pivoting to Baseball Reference.
-    Filters by the bottom 33rd percentile in Slugging Percentage (SLG).
+    Pulls individual player data to calculate team Slugging (SLG).
+    Includes a built-in dictionary to map names precisely to standard 3-letter
+    abbreviations, completely fixing the Chicago/New York merging bugs.
     """
     import streamlit as st
     import pandas as pd
     import pybaseball as pyb
 
     try:
-        # Pull TEAM batting stats directly from Baseball Reference
-        team_batting = pyb.team_batting_bref(season)
+        # 1. Pull PLAYER batting stats
+        bref_data = pyb.batting_stats_bref(season)
 
-        # BRef team stats use 'Tm' for Team
-        if "Tm" in team_batting.columns:
-            team_batting.rename(columns={"Tm": "Team"}, inplace=True)
+        # 2. Bulletproof Name Mapper
+        def get_abbreviation(row):
+            tm = str(row.get("Tm", "")).strip()
+            lg = str(row.get("Lg", "")).strip()
 
-        # Filter out the "League Average" and "Total" rows BRef includes at the bottom
-        team_batting = team_batting[
-            ~team_batting["Team"].str.contains("Avg|Tot|League", na=False, case=False)
-        ].copy()
+            # Fix the duplicate city bugs
+            if "Chicago" in tm:
+                return "CHW" if lg == "AL" else "CHC"
+            if "New York" in tm:
+                return "NYY" if lg == "AL" else "NYM"
+            if "Los Angeles" in tm:
+                return "LAA" if lg == "AL" else "LAD"
 
-        # Calculate the 33rd percentile (bottom 1/3 threshold) for Slugging
+            # Map the rest of the BRef quirks to standard abbreviations
+            mapping = {
+                "Arizona": "ARI",
+                "Diamondbacks": "ARI",
+                "Atlanta": "ATL",
+                "Braves": "ATL",
+                "Baltimore": "BAL",
+                "Orioles": "BAL",
+                "Boston": "BOS",
+                "Red Sox": "BOS",
+                "Cincinnati": "CIN",
+                "Reds": "CIN",
+                "Cleveland": "CLE",
+                "Guardians": "CLE",
+                "Colorado": "COL",
+                "Rockies": "COL",
+                "Detroit": "DET",
+                "Tigers": "DET",
+                "Houston": "HOU",
+                "Astros": "HOU",
+                "Kansas City": "KCR",
+                "Royals": "KCR",
+                "Miami": "MIA",
+                "Marlins": "MIA",
+                "Milwaukee": "MIL",
+                "Brewers": "MIL",
+                "Minnesota": "MIN",
+                "Twins": "MIN",
+                "Oakland": "OAK",
+                "Athletics": "OAK",
+                "Philadelphia": "PHI",
+                "Phillies": "PHI",
+                "Pittsburgh": "PIT",
+                "Pirates": "PIT",
+                "San Diego": "SDP",
+                "Padres": "SDP",
+                "San Francisco": "SFG",
+                "Giants": "SFG",
+                "Seattle": "SEA",
+                "Mariners": "SEA",
+                "St. Louis": "STL",
+                "Cardinals": "STL",
+                "Tampa Bay": "TBR",
+                "Rays": "TBR",
+                "Texas": "TEX",
+                "Rangers": "TEX",
+                "Toronto": "TOR",
+                "Blue Jays": "TOR",
+                "Washington": "WSN",
+                "Nationals": "WSN",
+                # Safeguard in case it's already an abbreviation
+                "ARI": "ARI",
+                "ATL": "ATL",
+                "BAL": "BAL",
+                "BOS": "BOS",
+                "CHW": "CHW",
+                "CHC": "CHC",
+                "CIN": "CIN",
+                "CLE": "CLE",
+                "COL": "COL",
+                "DET": "DET",
+                "HOU": "HOU",
+                "KCR": "KCR",
+                "LAA": "LAA",
+                "LAD": "LAD",
+                "MIA": "MIA",
+                "MIL": "MIL",
+                "MIN": "MIN",
+                "NYY": "NYY",
+                "NYM": "NYM",
+                "OAK": "OAK",
+                "PHI": "PHI",
+                "PIT": "PIT",
+                "SDP": "SDP",
+                "SEA": "SEA",
+                "SFG": "SFG",
+                "STL": "STL",
+                "TBR": "TBR",
+                "TEX": "TEX",
+                "TOR": "TOR",
+                "WSN": "WSN",
+            }
+            return mapping.get(tm, tm)
+
+        # Apply mapping to create a clean 'Team' column
+        bref_data["Team"] = bref_data.apply(get_abbreviation, axis=1)
+
+        # Filter out 'TOT' (Total) rows for traded players so their stats aren't double-counted
+        bref_data = bref_data[bref_data["Team"] != "TOT"]
+
+        # 3. Group by our pristine 3-letter abbreviations
+        team_batting = (
+            bref_data.groupby("Team").agg({"SLG": "mean", "HR": "sum"}).reset_index()
+        )
+
+        # 4. Calculate the 33rd percentile threshold for Slugging
         slg_threshold = team_batting["SLG"].quantile(0.33)
 
-        # Filter the teams based on the new threshold
+        # 5. Filter the teams based on the new threshold
         weak_power_df = team_batting[(team_batting["SLG"] <= slg_threshold)].copy()
 
-        # Format the numbers to look clean on the dashboard
+        # 6. Format the numbers to look clean on the dashboard
         weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
-        # Return the clean BRef data
+        # Return the clean BRef data mapped perfectly for your analyzer!
         return weak_power_df[["Team", "SLG", "HR"]]
 
     except Exception as e:
