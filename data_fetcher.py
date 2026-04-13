@@ -67,15 +67,20 @@ def get_power_fade_teams(season: int):
         # 2. Bulletproof Name Mapper
         def get_abbreviation(row):
             tm = str(row.get("Tm", "")).strip()
-            lg = str(row.get("Lg", "")).strip()
 
-            # Fix the duplicate city bugs
-            if "Chicago" in tm:
-                return "CHW" if lg == "AL" else "CHC"
-            if "New York" in tm:
-                return "NYY" if lg == "AL" else "NYM"
-            if "Los Angeles" in tm:
-                return "LAA" if lg == "AL" else "LAD"
+            # Fix the duplicate city bugs explicitly by mascot (ignores the League column entirely)
+            if "White Sox" in tm or tm == "CHW":
+                return "CHW"
+            if "Cubs" in tm or tm == "CHC":
+                return "CHC"
+            if "Yankees" in tm or tm == "NYY":
+                return "NYY"
+            if "Mets" in tm or tm == "NYM":
+                return "NYM"
+            if "Dodgers" in tm or tm == "LAD":
+                return "LAD"
+            if "Angels" in tm or tm == "LAA":
+                return "LAA"
 
             # Map the rest of the BRef quirks to standard abbreviations
             mapping = {
