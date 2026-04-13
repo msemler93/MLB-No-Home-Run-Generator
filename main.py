@@ -18,9 +18,9 @@ st.title("⚾ MLB No-HR Triple Threat Analyzer")
 st.info(f"📅 **Analyzing Slate For:** {today_date}")
 st.write("""
 **The Strict Filter Protocol:**
-1. **Pitching:** 45%+ GB%, < 1.0 HR/9, < 10% HR/FB.
+1. **Pitching:** 50%+ GB%, < 1.0 HR/9, < 10% HR/FB.
 2. **Environment:** Park Factor < 100 (Pitcher Friendly).
-3. **Offense:** Fading Bottom 10 Teams in ISO & HardHit%.
+3. **Offense:** Fading Bottom 33rd Percentile in ISO & HardContact.
 4. **Oddsmakers:** O/U Game Total must be 8.0 or lower.
 """)
 
