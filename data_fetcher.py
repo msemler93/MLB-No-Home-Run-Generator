@@ -52,86 +52,124 @@ def get_elite_gb_pitchers(season: int):
 
 def get_power_fade_teams(season: int):
     """
-    Pulls individual player data and calculates team Slugging (SLG).
-    Explicitly separates Chicago (CHC/CHW), NY (NYY/NYM), and LA (LAD/LAA)
-    by checking mascots and league designations.
+    Pulls individual PLAYER data to calculate team Slugging (SLG).
+    Uses an ironclad exact-match dictionary to permanently prevent FanGraphs/BRef
+    from merging the Chicago, New York, or Los Angeles teams.
     """
     import streamlit as st
     import pandas as pd
     import pybaseball as pyb
 
     try:
-        # 1. Pull PLAYER batting stats (Working endpoint)
+        # 1. Pull PLAYER batting stats from Baseball Reference
         bref_data = pyb.batting_stats_bref(season)
 
-        # 2. Advanced Mapping Logic
+        # 2. Ironclad Name Mapper
         def get_abbreviation(row):
-            # Convert everything to string/lowercase to be bulletproof
-            tm_str = str(row.get("Tm", "")).lower()
-            lg_str = str(row.get("Lg", "")).upper()
+            tm = str(row.get("Tm", "")).strip()
 
-            # --- CHICAGO SPLIT ---
-            if "chicago" in tm_str:
-                if "sox" in tm_str or lg_str == "AL":
-                    return "CHW"
+            # Direct Mascot/City overrides to force the split
+            if tm in ["CHC", "Cubs", "Chicago Cubs"]:
                 return "CHC"
-
-            # --- NEW YORK SPLIT ---
-            if "new york" in tm_str:
-                if "yankees" in tm_str or lg_str == "AL":
-                    return "NYY"
+            if tm in ["CHW", "White Sox", "Chicago White Sox"]:
+                return "CHW"
+            if tm in ["NYY", "Yankees", "New York Yankees"]:
+                return "NYY"
+            if tm in ["NYM", "Mets", "New York Mets"]:
                 return "NYM"
-
-            # --- LA SPLIT ---
-            if "los angeles" in tm_str:
-                if "angels" in tm_str or lg_str == "AL":
-                    return "LAA"
+            if tm in ["LAD", "Dodgers", "Los Angeles Dodgers"]:
                 return "LAD"
+            if tm in ["LAA", "Angels", "Los Angeles Angels"]:
+                return "LAA"
+            if tm in ["OAK", "Athletics", "Oakland Athletics"]:
+                return "OAK"
 
-            # --- STANDARD MAPPING ---
+            # Standard explicit mappings
             mapping = {
-                "arizona": "ARI",
-                "atlanta": "ATL",
-                "baltimore": "BAL",
-                "boston": "BOS",
-                "cincinnati": "CIN",
-                "cleveland": "CLE",
-                "colorado": "COL",
-                "detroit": "DET",
-                "houston": "HOU",
-                "kansas city": "KCR",
-                "miami": "MIA",
-                "milwaukee": "MIL",
-                "minnesota": "MIN",
-                "oakland": "OAK",
-                "philadelphia": "PHI",
-                "pittsburgh": "PIT",
-                "san diego": "SDP",
-                "san francisco": "SFG",
-                "seattle": "SEA",
-                "st. louis": "STL",
-                "tampa bay": "TBR",
-                "texas": "TEX",
-                "toronto": "TOR",
-                "washington": "WSN",
+                "Arizona": "ARI",
+                "Diamondbacks": "ARI",
+                "Arizona Diamondbacks": "ARI",
+                "Atlanta": "ATL",
+                "Braves": "ATL",
+                "Atlanta Braves": "ATL",
+                "Baltimore": "BAL",
+                "Orioles": "BAL",
+                "Baltimore Orioles": "BAL",
+                "Boston": "BOS",
+                "Red Sox": "BOS",
+                "Boston Red Sox": "BOS",
+                "Cincinnati": "CIN",
+                "Reds": "CIN",
+                "Cincinnati Reds": "CIN",
+                "Cleveland": "CLE",
+                "Guardians": "CLE",
+                "Cleveland Guardians": "CLE",
+                "Colorado": "COL",
+                "Rockies": "COL",
+                "Colorado Rockies": "COL",
+                "Detroit": "DET",
+                "Tigers": "DET",
+                "Detroit Tigers": "DET",
+                "Houston": "HOU",
+                "Astros": "HOU",
+                "Houston Astros": "HOU",
+                "Kansas City": "KCR",
+                "Royals": "KCR",
+                "Kansas City Royals": "KCR",
+                "Miami": "MIA",
+                "Marlins": "MIA",
+                "Miami Marlins": "MIA",
+                "Milwaukee": "MIL",
+                "Brewers": "MIL",
+                "Milwaukee Brewers": "MIL",
+                "Minnesota": "MIN",
+                "Twins": "MIN",
+                "Minnesota Twins": "MIN",
+                "Philadelphia": "PHI",
+                "Phillies": "PHI",
+                "Philadelphia Phillies": "PHI",
+                "Pittsburgh": "PIT",
+                "Pirates": "PIT",
+                "Pittsburgh Pirates": "PIT",
+                "San Diego": "SDP",
+                "Padres": "SDP",
+                "San Diego Padres": "SDP",
+                "San Francisco": "SFG",
+                "Giants": "SFG",
+                "San Francisco Giants": "SFG",
+                "Seattle": "SEA",
+                "Mariners": "SEA",
+                "Seattle Mariners": "SEA",
+                "St. Louis": "STL",
+                "Cardinals": "STL",
+                "St. Louis Cardinals": "STL",
+                "Tampa Bay": "TBR",
+                "Rays": "TBR",
+                "Tampa Bay Rays": "TBR",
+                "Texas": "TEX",
+                "Rangers": "TEX",
+                "Texas Rangers": "TEX",
+                "Toronto": "TOR",
+                "Blue Jays": "TOR",
+                "Toronto Blue Jays": "TOR",
+                "Washington": "WSN",
+                "Nationals": "WSN",
+                "Washington Nationals": "WSN",
             }
+            return mapping.get(tm, tm)
 
-            # Clean up the team name to check against mapping
-            clean_tm = tm_str.replace("braves", "").replace("brewers", "").strip()
-            return mapping.get(clean_tm, row.get("Tm"))
-
-        # Apply the logic
+        # Apply mapping
         bref_data["Team"] = bref_data.apply(get_abbreviation, axis=1)
 
-        # Filter out 'TOT' (players traded mid-season) to avoid double counting
+        # Filter out 'TOT' rows for traded players so their stats aren't double-counted
         bref_data = bref_data[bref_data["Team"] != "TOT"]
 
-        # 3. Group and Calculate
+        # 3. Group and calculate true team averages
         team_batting = (
             bref_data.groupby("Team").agg({"SLG": "mean", "HR": "sum"}).reset_index()
         )
 
-        # 4. Thresholding
+        # 4. Filter by bottom 33rd percentile
         slg_threshold = team_batting["SLG"].quantile(0.33)
         weak_power_df = team_batting[team_batting["SLG"] <= slg_threshold].copy()
         weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
