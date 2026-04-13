@@ -53,7 +53,7 @@ def get_elite_gb_pitchers(season: int):
 def get_power_fade_teams(season: int):
     """
     Pulls individual player data to calculate team Slugging (SLG).
-    Uses a bulletproof column-scanner to find the League flag (AL/NL) and 
+    Uses a bulletproof column-scanner to find the League flag (AL/NL) and
     properly split Chicago, New York, and LA teams.
     """
     import streamlit as st
@@ -69,7 +69,7 @@ def get_power_fade_teams(season: int):
             tm = ""
             lg = ""
 
-            # Scan columns case-insensitively to combat pybaseball's random formatting
+            # Scan columns case-insensitively
             for col in row.index:
                 if str(col).lower() in ["tm", "team"]:
                     tm = str(row[col]).strip()
@@ -77,55 +77,84 @@ def get_power_fade_teams(season: int):
                     lg = str(row[col]).strip().upper()
 
             # Split the duplicate cities using the League flag (AL vs NL)
-            if "Chicago" in tm: return "CHW" if lg == "AL" else "CHC"
-            if "New York" in tm: return "NYY" if lg == "AL" else "NYM"
-            if "Los Angeles" in tm: return "LAA" if lg == "AL" else "LAD"
+            if "Chicago" in tm:
+                return "CHW" if lg == "AL" else "CHC"
+            if "New York" in tm:
+                return "NYY" if lg == "AL" else "NYM"
+            if "Los Angeles" in tm:
+                return "LAA" if lg == "AL" else "LAD"
 
-            # Fallbacks just in case BRef changes their naming convention again
-            if "White Sox" in tm or tm == "CHW": return "CHW"
-            if "Cubs" in tm or tm == "CHC": return "CHC"
+            # Fallbacks
+            if "White Sox" in tm or tm == "CHW":
+                return "CHW"
+            if "Cubs" in tm or tm == "CHC":
+                return "CHC"
 
-            # Map the rest of the league to standard abbreviations
+            # Map the rest of the league
             mapping = {
-                "Arizona": "ARI", "Diamondbacks": "ARI", "Atlanta": "ATL", "Braves": "ATL",
-                "Baltimore": "BAL", "Orioles": "BAL", "Boston": "BOS", "Red Sox": "BOS",
-                "Cincinnati": "CIN", "Reds": "CIN", "Cleveland": "CLE", "Guardians": "CLE",
-                "Colorado": "COL", "Rockies": "COL", "Detroit": "DET", "Tigers": "DET",
-                "Houston": "HOU", "Astros": "HOU", "Kansas City": "KCR", "Royals": "KCR",
-                "Miami": "MIA", "Marlins": "MIA", "Milwaukee": "MIL", "Brewers": "MIL",
-                "Minnesota": "MIN", "Twins": "MIN", "Oakland": "OAK", "Athletics": "OAK",
-                "Philadelphia": "PHI", "Phillies": "PHI", "Pittsburgh": "PIT", "Pirates": "PIT",
-                "San Diego": "SDP", "Padres": "SDP", "San Francisco": "SFG", "Giants": "SFG",
-                "Seattle": "SEA", "Mariners": "SEA", "St. Louis": "STL", "Cardinals": "STL",
-                "Tampa Bay": "TBR", "Rays": "TBR", "Texas": "TEX", "Rangers": "TEX",
-                "Toronto": "TOR", "Blue Jays": "TOR", "Washington": "WSN", "Nationals": "WSN",
-                # Safeguards
-                "ARI": "ARI", "ATL": "ATL", "BAL": "BAL", "BOS": "BOS", "CHW": "CHW", "CHC": "CHC",
-                "CIN": "CIN", "CLE": "CLE", "COL": "COL", "DET": "DET", "HOU": "HOU", "KCR": "KCR",
-                "LAA": "LAA", "LAD": "LAD", "MIA": "MIA", "MIL": "MIL", "MIN": "MIN", "NYY": "NYY",
-                "NYM": "NYM", "OAK": "OAK", "PHI": "PHI", "PIT": "PIT", "SDP": "SDP", "SEA": "SEA",
-                "SFG": "SFG", "STL": "STL", "TBR": "TBR", "TEX": "TEX", "TOR": "TOR", "WSN": "WSN"
+                "Arizona": "ARI",
+                "Diamondbacks": "ARI",
+                "Atlanta": "ATL",
+                "Braves": "ATL",
+                "Baltimore": "BAL",
+                "Orioles": "BAL",
+                "Boston": "BOS",
+                "Red Sox": "BOS",
+                "Cincinnati": "CIN",
+                "Reds": "CIN",
+                "Cleveland": "CLE",
+                "Guardians": "CLE",
+                "Colorado": "COL",
+                "Rockies": "COL",
+                "Detroit": "DET",
+                "Tigers": "DET",
+                "Houston": "HOU",
+                "Astros": "HOU",
+                "Kansas City": "KCR",
+                "Royals": "KCR",
+                "Miami": "MIA",
+                "Marlins": "MIA",
+                "Milwaukee": "MIL",
+                "Brewers": "MIL",
+                "Minnesota": "MIN",
+                "Twins": "MIN",
+                "Oakland": "OAK",
+                "Athletics": "OAK",
+                "Philadelphia": "PHI",
+                "Phillies": "PHI",
+                "Pittsburgh": "PIT",
+                "Pirates": "PIT",
+                "San Diego": "SDP",
+                "Padres": "SDP",
+                "San Francisco": "SFG",
+                "Giants": "SFG",
+                "Seattle": "SEA",
+                "Mariners": "SEA",
+                "St. Louis": "STL",
+                "Cardinals": "STL",
+                "Tampa Bay": "TBR",
+                "Rays": "TBR",
+                "Texas": "TEX",
+                "Rangers": "TEX",
+                "Toronto": "TOR",
+                "Blue Jays": "TOR",
+                "Washington": "WSN",
+                "Nationals": "WSN",
             }
             return mapping.get(tm, tm)
 
-        # Apply mapping to create a clean 'Team' column
+        # Apply mapping
         bref_data["Team"] = bref_data.apply(get_abbreviation, axis=1)
-
-        # Filter out 'TOT' (Total) rows for traded players
         bref_data = bref_data[bref_data["Team"] != "TOT"]
 
-        # 3. Group by our pristine 3-letter abbreviations
-        team_batting = bref_data.groupby("Team").agg({"SLG": "mean", "HR": "sum"}).reset_index()
+        # 3. Group and calculate
+        team_batting = (
+            bref_data.groupby("Team").agg({"SLG": "mean", "HR": "sum"}).reset_index()
+        )
 
-        # 4. Calculate the 33rd percentile threshold for Slugging
+        # 4. Filter by bottom 33rd percentile
         slg_threshold = team_batting["SLG"].quantile(0.33)
-
-        # 5. Filter the teams based on the new threshold
-        weak_power_df = team_batting[
-            (team_batting["SLG"] <= slg_threshold)
-        ].copy()
-
-        # 6. Format the numbers to look clean on the dashboard
+        weak_power_df = team_batting[team_batting["SLG"] <= slg_threshold].copy()
         weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
         return weak_power_df[["Team", "SLG", "HR"]]
@@ -133,10 +162,6 @@ def get_power_fade_teams(season: int):
     except Exception as e:
         st.error(f"🚨 BATTING DATA CRASH: {type(e).__name__} - {e}")
         return pd.DataFrame()
-
-except Exception as e:
-st.error(f"🚨 BATTING DATA CRASH: {type(e).__name__} - {e}")
-return pd.DataFrame()
 
 
 def get_park_factors():
