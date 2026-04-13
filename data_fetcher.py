@@ -6,19 +6,42 @@ import requests
 def get_elite_gb_pitchers(season: int):
     """
     Pivots to Baseball Reference to bypass the FanGraphs ban.
-    Filters strictly for pitchers allowing less than 1.0 HR/9.
+    Filters strictly for pitchers allowing less than 1.0 HR/9 by calculating it manually.
     """
     import streamlit as st
+    import pandas as pd
+    import pybaseball as pyb
 
     try:
         # Pull pitching stats from Baseball Reference
         pitching_data = pyb.pitching_stats_bref(season)
 
-        # Filter for pitchers allowing less than 1.0 HR per 9 innings
-        elite_pitchers = pitching_data[(pitching_data["HR9"] < 1.0)].copy()
+        # 1. Rename 'Tm' to 'Team'
+        if "Tm" in pitching_data.columns:
+            pitching_data.rename(columns={"Tm": "Team"}, inplace=True)
 
-        # Rename 'Tm' to 'Team' to match your engine's logic
-        elite_pitchers.rename(columns={"Tm": "Team"}, inplace=True)
+        # 2. Bulletproof HR/9 Calculation
+        # BRef doesn't always provide a clean HR9 column, so we calculate it from scratch
+        # using Total Home Runs (HR) and Innings Pitched (IP).
+
+        # Convert baseball IP (e.g., 50.1) to true decimals (50.333)
+        ip_whole = pitching_data["IP"].fillna(0).astype(int)
+        ip_frac = (pitching_data["IP"].fillna(0) - ip_whole) * 3.333
+        pitching_data["IP_True"] = ip_whole + ip_frac
+
+        # Prevent division by zero for guys who just got called up and have 0 IP
+        pitching_data["IP_True"] = pitching_data["IP_True"].replace(0, 0.1)
+
+        # Do the math: (HR / IP) * 9
+        pitching_data["Calc_HR9"] = (
+            pitching_data["HR"].fillna(0) / pitching_data["IP_True"]
+        ) * 9
+
+        # 3. Filter for elite pitchers (< 1.0 HR/9)
+        elite_pitchers = pitching_data[(pitching_data["Calc_HR9"] < 1.0)].copy()
+
+        # 4. Clean up the output columns for the dashboard
+        elite_pitchers["HR9"] = elite_pitchers["Calc_HR9"].round(2)
 
         return elite_pitchers[["Name", "Team", "HR9"]]
 
