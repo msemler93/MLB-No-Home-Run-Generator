@@ -31,6 +31,8 @@ def get_power_fade_teams(season: int):
     Identifies the bottom third of MLB offenses in power metrics.
     Dynamically filters by the bottom 33rd percentile in ISO and Hard Contact.
     """
+    import streamlit as st  # Bringing UI controls directly into the fetcher
+
     try:
         # Pull standard team batting stats
         team_batting = pyb.team_batting(season)
@@ -67,7 +69,8 @@ def get_power_fade_teams(season: int):
         return weak_power_df[available_columns]
 
     except Exception as e:
-        print(f"Error fetching batting data: {e}")
+        # THE MAGIC LINE: Prints the actual error directly to your app                       # frontend
+        st.error(f"🚨 ENGINE CRASH REPORT: {type(e).__name__} - {e}")
         return pd.DataFrame()
 
 
