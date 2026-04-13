@@ -49,119 +49,103 @@ def get_elite_gb_pitchers(season: int):
         st.error(f"🚨 PITCHING DATA CRASH: {type(e).__name__} - {e}")
         return pd.DataFrame()
 
+        def get_power_fade_teams(season: int):
+            """
+            Pulls individual player data and calculates team Slugging (SLG).
+            Explicitly separates Chicago (CHC/CHW), NY (NYY/NYM), and LA (LAD/LAA)
+            by checking mascots and league designations.
+            """
+            import streamlit as st
+            import pandas as pd
+            import pybaseball as pyb
 
-def get_power_fade_teams(season: int):
-    """
-    Pulls individual player data to calculate team Slugging (SLG).
-    Uses a bulletproof column-scanner to find the League flag (AL/NL) and
-    properly split Chicago, New York, and LA teams.
-    """
-    import streamlit as st
-    import pandas as pd
-    import pybaseball as pyb
+            try:
+                # 1. Pull PLAYER batting stats (Working endpoint)
+                bref_data = pyb.batting_stats_bref(season)
 
-    try:
-        # 1. Pull PLAYER batting stats
-        bref_data = pyb.batting_stats_bref(season)
+                # 2. Advanced Mapping Logic
+                def get_abbreviation(row):
+                    # Convert everything to string/lowercase to be bulletproof
+                    tm_str = str(row.get("Tm", "")).lower()
+                    lg_str = str(row.get("Lg", "")).upper()
 
-        # 2. Bulletproof Name & League Mapper
-        def get_abbreviation(row):
-            tm = ""
-            lg = ""
+                    # --- CHICAGO SPLIT ---
+                    if "chicago" in tm_str:
+                        if "sox" in tm_str or lg_str == "AL":
+                            return "CHW"
+                        return "CHC"
 
-            # Scan columns case-insensitively
-            for col in row.index:
-                if str(col).lower() in ["tm", "team"]:
-                    tm = str(row[col]).strip()
-                if str(col).lower() in ["lg", "league"]:
-                    lg = str(row[col]).strip().upper()
+                    # --- NEW YORK SPLIT ---
+                    if "new york" in tm_str:
+                        if "yankees" in tm_str or lg_str == "AL":
+                            return "NYY"
+                        return "NYM"
 
-            # Split the duplicate cities using the League flag (AL vs NL)
-            if "Chicago" in tm:
-                return "CHW" if lg == "AL" else "CHC"
-            if "New York" in tm:
-                return "NYY" if lg == "AL" else "NYM"
-            if "Los Angeles" in tm:
-                return "LAA" if lg == "AL" else "LAD"
+                    # --- LA SPLIT ---
+                    if "los angeles" in tm_str:
+                        if "angels" in tm_str or lg_str == "AL":
+                            return "LAA"
+                        return "LAD"
 
-            # Fallbacks
-            if "White Sox" in tm or tm == "CHW":
-                return "CHW"
-            if "Cubs" in tm or tm == "CHC":
-                return "CHC"
+                    # --- STANDARD MAPPING ---
+                    mapping = {
+                        "arizona": "ARI",
+                        "atlanta": "ATL",
+                        "baltimore": "BAL",
+                        "boston": "BOS",
+                        "cincinnati": "CIN",
+                        "cleveland": "CLE",
+                        "colorado": "COL",
+                        "detroit": "DET",
+                        "houston": "HOU",
+                        "kansas city": "KCR",
+                        "miami": "MIA",
+                        "milwaukee": "MIL",
+                        "minnesota": "MIN",
+                        "oakland": "OAK",
+                        "philadelphia": "PHI",
+                        "pittsburgh": "PIT",
+                        "san diego": "SDP",
+                        "san francisco": "SFG",
+                        "seattle": "SEA",
+                        "st. louis": "STL",
+                        "tampa bay": "TBR",
+                        "texas": "TEX",
+                        "toronto": "TOR",
+                        "washington": "WSN",
+                    }
 
-            # Map the rest of the league
-            mapping = {
-                "Arizona": "ARI",
-                "Diamondbacks": "ARI",
-                "Atlanta": "ATL",
-                "Braves": "ATL",
-                "Baltimore": "BAL",
-                "Orioles": "BAL",
-                "Boston": "BOS",
-                "Red Sox": "BOS",
-                "Cincinnati": "CIN",
-                "Reds": "CIN",
-                "Cleveland": "CLE",
-                "Guardians": "CLE",
-                "Colorado": "COL",
-                "Rockies": "COL",
-                "Detroit": "DET",
-                "Tigers": "DET",
-                "Houston": "HOU",
-                "Astros": "HOU",
-                "Kansas City": "KCR",
-                "Royals": "KCR",
-                "Miami": "MIA",
-                "Marlins": "MIA",
-                "Milwaukee": "MIL",
-                "Brewers": "MIL",
-                "Minnesota": "MIN",
-                "Twins": "MIN",
-                "Oakland": "OAK",
-                "Athletics": "OAK",
-                "Philadelphia": "PHI",
-                "Phillies": "PHI",
-                "Pittsburgh": "PIT",
-                "Pirates": "PIT",
-                "San Diego": "SDP",
-                "Padres": "SDP",
-                "San Francisco": "SFG",
-                "Giants": "SFG",
-                "Seattle": "SEA",
-                "Mariners": "SEA",
-                "St. Louis": "STL",
-                "Cardinals": "STL",
-                "Tampa Bay": "TBR",
-                "Rays": "TBR",
-                "Texas": "TEX",
-                "Rangers": "TEX",
-                "Toronto": "TOR",
-                "Blue Jays": "TOR",
-                "Washington": "WSN",
-                "Nationals": "WSN",
-            }
-            return mapping.get(tm, tm)
+                    # Clean up the team name to check against mapping
+                    clean_tm = (
+                        tm_str.replace("braves", "").replace("brewers", "").strip()
+                    )
+                    return mapping.get(clean_tm, row.get("Tm"))
 
-        # Apply mapping
-        bref_data["Team"] = bref_data.apply(get_abbreviation, axis=1)
-        bref_data = bref_data[bref_data["Team"] != "TOT"]
+                # Apply the logic
+                bref_data["Team"] = bref_data.apply(get_abbreviation, axis=1)
 
-        # 3. Group and calculate
-        team_batting = (
-            bref_data.groupby("Team").agg({"SLG": "mean", "HR": "sum"}).reset_index()
-        )
+                # Filter out 'TOT' (players traded mid-season) to avoid double counting
+                bref_data = bref_data[bref_data["Team"] != "TOT"]
 
-        # 4. Filter by bottom 33rd percentile
-        slg_threshold = team_batting["SLG"].quantile(0.33)
-        weak_power_df = team_batting[team_batting["SLG"] <= slg_threshold].copy()
-        weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
+                # 3. Group and Calculate
+                team_batting = (
+                    bref_data.groupby("Team")
+                    .agg({"SLG": "mean", "HR": "sum"})
+                    .reset_index()
+                )
 
-        return weak_power_df[["Team", "SLG", "HR"]]
+                # 4. Thresholding
+                slg_threshold = team_batting["SLG"].quantile(0.33)
+                weak_power_df = team_batting[
+                    team_batting["SLG"] <= slg_threshold
+                ].copy()
+                weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
-    except Exception as e:
-        st.error(f"🚨 BATTING DATA CRASH: {type(e).__name__} - {e}")
-        return pd.DataFrame()
+                return weak_power_df[["Team", "SLG", "HR"]]
+
+            except Exception as e:
+                st.error(f"🚨 BATTING DATA CRASH: {e}")
+                return pd.DataFrame()
 
 
 def get_park_factors():
