@@ -41,7 +41,7 @@ def get_elite_gb_pitchers(season: int):
 
                 # Filter teams that fall below the threshold for BOTH metrics
                 weak_power_df = team_batting[
-                    (team_batting["ISO"] <= iso_threshold) & 
+                    (team_batting["ISO"] <= iso_threshold) &
                     (team_batting["HardHit%"] <= hardhit_threshold)
                 ].copy()
 
