@@ -1,5 +1,5 @@
 streamlit
-pybaseball
+pybaseball>=2.2.7
 MLB-StatsAPI
 pandas
 requests
