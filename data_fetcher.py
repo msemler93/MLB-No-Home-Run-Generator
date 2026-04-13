@@ -56,26 +56,32 @@ def get_power_fade_teams(season: int):
     Filters by the bottom 33rd percentile in Slugging Percentage (SLG).
     """
     import streamlit as st
+    import pandas as pd
+    import pybaseball as pyb
 
     try:
-        # Pull PLAYER batting stats from Baseball Reference
-        bref_data = pyb.batting_stats_bref(season)
+        # Pull TEAM batting stats directly from Baseball Reference
+        team_batting = pyb.team_batting_bref(season)
 
-        # Group by Team and calculate average SLG and total HRs
-        team_batting = (
-            bref_data.groupby("Tm").agg({"SLG": "mean", "HR": "sum"}).reset_index()
-        )
-        team_batting.rename(columns={"Tm": "Team"}, inplace=True)
+        # BRef team stats use 'Tm' for Team
+        if "Tm" in team_batting.columns:
+            team_batting.rename(columns={"Tm": "Team"}, inplace=True)
 
-        # Calculate the 33rd percentile threshold for Slugging
+        # Filter out the "League Average" and "Total" rows BRef includes at the bottom
+        team_batting = team_batting[
+            ~team_batting["Team"].str.contains("Avg|Tot|League", na=False, case=False)
+        ].copy()
+
+        # Calculate the 33rd percentile (bottom 1/3 threshold) for Slugging
         slg_threshold = team_batting["SLG"].quantile(0.33)
 
-        # Filter the teams
+        # Filter the teams based on the new threshold
         weak_power_df = team_batting[(team_batting["SLG"] <= slg_threshold)].copy()
 
         # Format the numbers to look clean on the dashboard
         weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
+        # Return the clean BRef data
         return weak_power_df[["Team", "SLG", "HR"]]
 
     except Exception as e:
