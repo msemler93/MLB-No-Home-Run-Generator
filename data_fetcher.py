@@ -45,10 +45,10 @@ def get_elite_gb_pitchers(season: int):
                     (team_batting["HardHit%"] <= hardhit_threshold)
                 ].copy()
 
-                # Returning ISO, Slugging (SLG), and HardHit% to evaluate contact quality
+                # Returning ISO, Slugging (SLG), and HardHit% to evaluate contact                    # quality
                 columns_to_return = ["Team", "ISO", "SLG", "HR", "HardHit%"]
 
-                # Filter columns to only include those that exist in the dataframe (safeguard)
+                # Filter columns to only include those that exist in the dataframe                   # (safeguard)
                 available_columns = [
                     col for col in columns_to_return if col in weak_power_df.columns
                 ]
