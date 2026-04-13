@@ -25,67 +25,45 @@ def get_elite_gb_pitchers(season: int):
         print(f"Error fetching pitching data: {e}")
         return pd.DataFrame()
 
+        def get_power_fade_teams(season: int):
+            """
+            Bypasses FanGraphs entirely by pivoting to Baseball Reference.
+            Filters by the bottom 33rd percentile in Slugging Percentage (SLG).
+            """
+            import streamlit as st
+            import pandas as pd
+            import pybaseball as pyb
 
-def get_power_fade_teams(season: int):
-    """
-    Bypasses the broken FanGraphs team endpoint by pulling individual player data
-    and calculating the true team averages for ISO and Hard Contact.
-    """
-    import streamlit as st
+            try:
+                # 1. Pull PLAYER batting stats from Baseball Reference (Bypasses FanGraphs!)
+                bref_data = pyb.batting_stats_bref(season)
 
-    try:
-        # 1. Pull PLAYER batting stats instead of Team stats (This endpoint works!)
-        # qual=50 ensures we only evaluate everyday hitters, filtering out noise
-        player_batting = pyb.batting_stats(season, qual=50)
+                # 2. Group by Team (BRef uses 'Tm' instead of 'Team')
+                # We will use raw Slugging (SLG) and Total HRs as our power metrics
+                team_batting = (
+                    bref_data.groupby("Tm")
+                    .agg({"SLG": "mean", "HR": "sum"})
+                    .reset_index()
+                )
+                team_batting.rename(columns={"Tm": "Team"}, inplace=True)
 
-        # 2. Safely locate the Hard Contact column
-        if "HardHit%" in player_batting.columns:
-            hard_col = "HardHit%"
-        elif "Hard%" in player_batting.columns:
-            hard_col = "Hard%"
-        else:
-            hard_col = None
+                # 3. Calculate the 33rd percentile (bottom 1/3 threshold) for Slugging
+                slg_threshold = team_batting["SLG"].quantile(0.33)
 
-        # 3. Group by Team to create our own custom Team Stats table
-        agg_dict = {"ISO": "mean", "SLG": "mean", "HR": "sum"}
-        if hard_col:
-            agg_dict[hard_col] = "mean"
+                # 4. Filter the teams based on the new threshold
+                weak_power_df = team_batting[
+                    (team_batting["SLG"] <= slg_threshold)
+                ].copy()
 
-        team_batting = player_batting.groupby("Team").agg(agg_dict).reset_index()
+                # 5. Format the numbers to look clean on the dashboard
+                weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
-        # 4. Calculate the 33rd percentile (bottom 1/3 threshold) dynamically
-        iso_threshold = team_batting["ISO"].quantile(0.33)
+                # Return the clean BRef data
+                return weak_power_df[["Team", "SLG", "HR"]]
 
-        # 5. Filter the teams based on our custom math
-        if hard_col:
-            hardhit_threshold = team_batting[hard_col].quantile(0.33)
-            weak_power_df = team_batting[
-                (team_batting["ISO"] <= iso_threshold)
-                & (team_batting[hard_col] <= hardhit_threshold)
-            ].copy()
-        else:
-            weak_power_df = team_batting[(team_batting["ISO"] <= iso_threshold)].copy()
-
-        # 6. Format the numbers to look clean on your dashboard
-        weak_power_df["ISO"] = weak_power_df["ISO"].round(3)
-        weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
-        if hard_col:
-            weak_power_df[hard_col] = (
-                (weak_power_df[hard_col] * 100).round(1)
-                if weak_power_df[hard_col].max() <= 1.0
-                else weak_power_df[hard_col].round(1)
-            )
-
-        columns_to_return = ["Team", "ISO", "SLG", "HR", "HardHit%", "Hard%"]
-        available_columns = [
-            col for col in columns_to_return if col in weak_power_df.columns
-        ]
-
-        return weak_power_df[available_columns]
-
-    except Exception as e:
-        st.error(f"🚨 ENGINE CRASH REPORT: {type(e).__name__} - {e}")
-        return pd.DataFrame()
+            except Exception as e:
+                st.error(f"🚨 ENGINE CRASH REPORT: {type(e).__name__} - {e}")
+                return pd.DataFrame()
 
 
 def get_park_factors():
