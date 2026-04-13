@@ -57,7 +57,7 @@ def get_elite_gb_pitchers(season: int):
 
         except Exception as e:
                 print(f"Error fetching batting data: {e}")
-                return pd.DataFrame()
+             return pd.DataFrame()
 
 
 def get_park_factors():
