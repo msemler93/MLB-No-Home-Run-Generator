@@ -28,27 +28,35 @@ def get_elite_gb_pitchers(season: int):
 
 def get_power_fade_teams(season: int):
     """
-    Identifies the bottom third of MLB offenses in power metrics.
-    Dynamically filters by the bottom 33rd percentile in ISO and Hard Contact.
+    Bypasses the broken FanGraphs team endpoint by pulling individual player data
+    and calculating the true team averages for ISO and Hard Contact.
     """
-    import streamlit as st  # Bringing UI controls directly into the fetcher
+    import streamlit as st
 
     try:
-        # Pull standard team batting stats
-        team_batting = pyb.team_batting(season)
+        # 1. Pull PLAYER batting stats instead of Team stats (This endpoint works!)
+        # qual=50 ensures we only evaluate everyday hitters, filtering out noise
+        player_batting = pyb.batting_stats(season, qual=50)
 
-        # 1. Calculate the 33rd percentile for ISO (Always exists)
-        iso_threshold = team_batting["ISO"].quantile(0.33)
-
-        # 2. Safely locate the Hard Contact column (FanGraphs changes this sometimes)
-        if "HardHit%" in team_batting.columns:
+        # 2. Safely locate the Hard Contact column
+        if "HardHit%" in player_batting.columns:
             hard_col = "HardHit%"
-        elif "Hard%" in team_batting.columns:
+        elif "Hard%" in player_batting.columns:
             hard_col = "Hard%"
         else:
             hard_col = None
 
-        # 3. Filter the teams
+        # 3. Group by Team to create our own custom Team Stats table
+        agg_dict = {"ISO": "mean", "SLG": "mean", "HR": "sum"}
+        if hard_col:
+            agg_dict[hard_col] = "mean"
+
+        team_batting = player_batting.groupby("Team").agg(agg_dict).reset_index()
+
+        # 4. Calculate the 33rd percentile (bottom 1/3 threshold) dynamically
+        iso_threshold = team_batting["ISO"].quantile(0.33)
+
+        # 5. Filter the teams based on our custom math
         if hard_col:
             hardhit_threshold = team_batting[hard_col].quantile(0.33)
             weak_power_df = team_batting[
@@ -56,12 +64,19 @@ def get_power_fade_teams(season: int):
                 & (team_batting[hard_col] <= hardhit_threshold)
             ].copy()
         else:
-            # Fallback if FanGraphs hides the Hard Contact data
             weak_power_df = team_batting[(team_batting["ISO"] <= iso_threshold)].copy()
 
-        # 4. Return the relevant columns
-        columns_to_return = ["Team", "ISO", "SLG", "HR", "HardHit%", "Hard%"]
+        # 6. Format the numbers to look clean on your dashboard
+        weak_power_df["ISO"] = weak_power_df["ISO"].round(3)
+        weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
+        if hard_col:
+            weak_power_df[hard_col] = (
+                (weak_power_df[hard_col] * 100).round(1)
+                if weak_power_df[hard_col].max() <= 1.0
+                else weak_power_df[hard_col].round(1)
+            )
 
+        columns_to_return = ["Team", "ISO", "SLG", "HR", "HardHit%", "Hard%"]
         available_columns = [
             col for col in columns_to_return if col in weak_power_df.columns
         ]
@@ -69,7 +84,6 @@ def get_power_fade_teams(season: int):
         return weak_power_df[available_columns]
 
     except Exception as e:
-        # THE MAGIC LINE: Prints the actual error directly to your app                       # frontend
         st.error(f"🚨 ENGINE CRASH REPORT: {type(e).__name__} - {e}")
         return pd.DataFrame()
 
