@@ -21,9 +21,9 @@ def get_elite_gb_pitchers(season: int):
         # Return only the necessary columns to keep memory usage low
         return elite_pitchers[["Name", "Team", "GB%", "HR/9", "HR/FB"]]
 
-    except Exception as e:
+        except Exception as e:
         print(f"Error fetching pitching data: {e}")
-        return pd.DataFrame()
+            return pd.DataFrame()
 
 
  def get_power_fade_teams(season: int):
@@ -31,7 +31,7 @@ def get_elite_gb_pitchers(season: int):
             Identifies the bottom third of MLB offenses in power metrics.
             Dynamically filters by the bottom 33rd percentile in ISO and HardHit%.
             """
-            try:
+        try:
                 # Pull standard team batting stats
                 team_batting = pyb.team_batting(season)
 
@@ -55,7 +55,7 @@ def get_elite_gb_pitchers(season: int):
 
                 return weak_power_df[available_columns]
 
-            except Exception as e:
+        except Exception as e:
                 print(f"Error fetching batting data: {e}")
                 return pd.DataFrame()
 
