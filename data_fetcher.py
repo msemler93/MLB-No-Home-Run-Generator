@@ -53,27 +53,50 @@ def get_elite_gb_pitchers(season: int):
 def get_power_fade_teams(season: int):
     import streamlit as st
     import pandas as pd
-    from pybaseball import team_batting
+    import pybaseball as pyb
 
     try:
-        # Pulls clean, pre-aggregated team data for the current season from FanGraphs
-        team_data = team_batting(season)
+        # Revert to Baseball Reference to bypass the FanGraphs 403 ban
+        bref_data = pyb.batting_stats_bref(season)
 
-        # Keep essential columns (FanGraphs natively uses 'Team', 'ISO', 'SLG', 'HR')
-        team_stats = team_data[["Team", "ISO", "SLG", "HR"]].copy()
+        # 1. Standardize Team column name
+        if "Tm" in bref_data.columns:
+            bref_data.rename(columns={"Tm": "Team"}, inplace=True)
 
-        # Find the bottom third of the league based on ISO to strictly fade power
+        # 2. Filter out traded players to prevent double-counting and franken-teams
+        # Drop rows where Team has a comma (e.g. "Chicago,Toronto") or is "TOT" (Totals)
+        bref_data = bref_data[~bref_data["Team"].str.contains(",", na=False)]
+        bref_data = bref_data[bref_data["Team"] != "TOT"]
+
+        # 3. Mathematically correct aggregation: Sum the raw counting stats
+        # (Taking the 'mean' of player SLGs mathematically skews team data)
+        team_stats = (
+            bref_data.groupby("Team")[["AB", "H", "2B", "3B", "HR"]].sum().reset_index()
+        )
+
+        # Prevent division by zero early in the season
+        team_stats["AB"] = team_stats["AB"].replace(0, 1)
+
+        # 4. Calculate proper Team SLG and ISO
+        # Total Bases = H + 2B + (2 * 3B) + (3 * HR)
+        team_stats["TB"] = (
+            team_stats["H"]
+            + team_stats["2B"]
+            + (2 * team_stats["3B"])
+            + (3 * team_stats["HR"])
+        )
+
+        team_stats["SLG"] = (team_stats["TB"] / team_stats["AB"]).round(3)
+        team_stats["AVG"] = (team_stats["H"] / team_stats["AB"]).round(3)
+        team_stats["ISO"] = (team_stats["SLG"] - team_stats["AVG"]).round(3)
+
+        # 5. Filter for the bottom third of the league based on ISO
         iso_threshold = team_stats["ISO"].quantile(0.33)
         weak_power_df = team_stats[team_stats["ISO"] <= iso_threshold].copy()
-
-        # Clean up decimals for the display
-        weak_power_df["ISO"] = weak_power_df["ISO"].round(3)
-        weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
         # Sort by the weakest power
         weak_power_df = weak_power_df.sort_values("ISO", ascending=True)
 
-        # Returning SLG as well just in case your frontend UI expects it
         return weak_power_df[["Team", "ISO", "SLG", "HR"]]
 
     except Exception as e:
