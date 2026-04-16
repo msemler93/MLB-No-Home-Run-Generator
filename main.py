@@ -8,106 +8,83 @@ import odds_api
 near_misses = []
 
 
-def display_prime_environments(daily_games, weak_power_df, safe_parks_dict):
-    import pandas as pd
-    import streamlit as st
+        def display_prime_environments(daily_games, weak_power_df, safe_parks_dict):
+            import pandas as pd
+            import streamlit as st
 
-    # Mapping to bridge the 3-letter codes from your power_fade table to the full stadium names
-    abbr_to_full = {
-        "ARI": "Arizona Diamondbacks",
-        "ATL": "Atlanta Braves",
-        "BAL": "Baltimore Orioles",
-        "BOS": "Boston Red Sox",
-        "CHC": "Chicago Cubs",
-        "CHW": "Chicago White Sox",
-        "CIN": "Cincinnati Reds",
-        "CLE": "Cleveland Guardians",
-        "COL": "Colorado Rockies",
-        "DET": "Detroit Tigers",
-        "HOU": "Houston Astros",
-        "KCR": "Kansas City Royals",
-        "LAA": "Los Angeles Angels",
-        "LAD": "Los Angeles Dodgers",
-        "MIA": "Miami Marlins",
-        "MIL": "Milwaukee Brewers",
-        "MIN": "Minnesota Twins",
-        "NYM": "New York Mets",
-        "NYY": "New York Yankees",
-        "OAK": "Oakland Athletics",
-        "PHI": "Philadelphia Phillies",
-        "PIT": "Pittsburgh Pirates",
-        "SDP": "San Diego Padres",
-        "SEA": "Seattle Mariners",
-        "SFG": "San Francisco Giants",
-        "STL": "St. Louis Cardinals",
-        "TBR": "Tampa Bay Rays",
-        "TEX": "Texas Rangers",
-        "TOR": "Toronto Blue Jays",
-        "WSN": "Washington Nationals",
-    }
+            # Map full team names to all possible variations they might appear as in your tables
+            # This makes the app bulletproof whether you use 3-letter codes or BRef city names
+            team_aliases = {
+                "Arizona Diamondbacks": ["Arizona", "ARI"], "Atlanta Braves": ["Atlanta", "ATL"], 
+                "Baltimore Orioles": ["Baltimore", "BAL"], "Boston Red Sox": ["Boston", "BOS"], 
+                "Chicago Cubs": ["Chicago", "CHC"], "Chicago White Sox": ["Chicago White Sox", "CHW"], 
+                "Cincinnati Reds": ["Cincinnati", "CIN"], "Cleveland Guardians": ["Cleveland", "CLE"], 
+                "Colorado Rockies": ["Colorado", "COL"], "Detroit Tigers": ["Detroit", "DET"], 
+                "Houston Astros": ["Houston", "HOU"], "Kansas City Royals": ["Kansas City", "KCR"], 
+                "Los Angeles Angels": ["Los Angeles", "LAA"], "Los Angeles Dodgers": ["Los Angeles", "LAD"], 
+                "Miami Marlins": ["Miami", "MIA"], "Milwaukee Brewers": ["Milwaukee", "MIL"], 
+                "Minnesota Twins": ["Minnesota", "MIN"], "New York Mets": ["New York", "NYM"], 
+                "New York Yankees": ["New York", "NYY"], "Oakland Athletics": ["Athletics", "Oakland", "OAK"], 
+                "Philadelphia Phillies": ["Philadelphia", "PHI"], "Pittsburgh Pirates": ["Pittsburgh", "PIT"], 
+                "San Diego Padres": ["San Diego", "SDP"], "San Francisco Giants": ["San Francisco", "SFG"], 
+                "Seattle Mariners": ["Seattle", "SEA"], "St. Louis Cardinals": ["St. Louis", "STL"], 
+                "Tampa Bay Rays": ["Tampa Bay", "TBR"], "Texas Rangers": ["Texas", "TEX"], 
+                "Toronto Blue Jays": ["Toronto", "TOR"], "Washington Nationals": ["Washington", "WSN"]
+            }
 
-    matches = []
+            matches = []
 
-    # Grab just the list of 3-letter team codes that made the bottom-third ISO cut
-    weak_teams_list = weak_power_df["Team"].tolist()
+            # Grab the list of weak teams currently displayed in your table
+            weak_teams_list = weak_power_df['Team'].tolist()
 
-    # Loop through today's games
-    # NOTE: Adjust 'Away' and 'Home' depending on how your specific schedule dataframe is labeled
-    for index, game in daily_games.iterrows():
-        away_team_full = game["Away"]
-        home_team_full = game["Home"]
+            for index, game in daily_games.iterrows(): 
+                away_team_full = game['Away']
+                home_team_full = game['Home']
 
-        # 1. Check if the game is being played in a Pitcher-Friendly Park
-        if home_team_full in safe_parks_dict:
-            park_factor = safe_parks_dict[home_team_full]
+                # 1. Check if the game is being played in a Pitcher-Friendly Park
+                if home_team_full in safe_parks_dict:
+                    park_factor = safe_parks_dict[home_team_full]
 
-            # 2. Check if the Away Team is a weak offense stepping into the bad park
-            away_abbr = [k for k, v in abbr_to_full.items() if v == away_team_full]
-            if away_abbr and away_abbr[0] in weak_teams_list:
-                iso = weak_power_df.loc[
-                    weak_power_df["Team"] == away_abbr[0], "ISO"
-                ].values[0]
-                matches.append(
-                    {
-                        "Target Offense": away_team_full,
-                        "Team ISO": iso,
-                        "Stadium": home_team_full,
-                        "Park Factor": park_factor,
-                        "Fade Angle": "Away Team",
-                    }
-                )
+                    # 2. Check if the Away Team is a weak offense stepping into the bad park
+                    away_aliases = team_aliases.get(away_team_full, [away_team_full])
+                    # Find which alias is actually matching your dataframe
+                    away_match = next((alias for alias in away_aliases if alias in weak_teams_list), None)
 
-            # 3. Check if the Home Team is a weak offense (they have to hit in their own bad park!)
-            home_abbr = [k for k, v in abbr_to_full.items() if v == home_team_full]
-            if home_abbr and home_abbr[0] in weak_teams_list:
-                iso = weak_power_df.loc[
-                    weak_power_df["Team"] == home_abbr[0], "ISO"
-                ].values[0]
-                matches.append(
-                    {
-                        "Target Offense": home_team_full,
-                        "Team ISO": iso,
-                        "Stadium": home_team_full,
-                        "Park Factor": park_factor,
-                        "Fade Angle": "Home Team",
-                    }
-                )
+                    if away_match:
+                        iso = weak_power_df.loc[weak_power_df['Team'] == away_match, 'ISO'].values[0]
+                        matches.append({
+                            "Target Offense": away_team_full,
+                            "Team ISO": iso,
+                            "Stadium": home_team_full,
+                            "Park Factor": park_factor,
+                            "Fade Angle": "Away Team"
+                        })
 
-    # Render the new table in Streamlit
-    st.write("### 🎯 Prime Environments (Weak Offense in Safe Park)")
-    if matches:
-        match_df = pd.DataFrame(matches)
+                    # 3. Check if the Home Team is a weak offense (they have to hit in their own bad park!)
+                    home_aliases = team_aliases.get(home_team_full, [home_team_full])
+                    home_match = next((alias for alias in home_aliases if alias in weak_teams_list), None)
 
-        # Sort so the absolute best environments (lowest ISO + lowest park factor) are at the top
-        match_df = match_df.sort_values(
-            by=["Park Factor", "Team ISO"], ascending=[True, True]
-        )
+                    if home_match:
+                        iso = weak_power_df.loc[weak_power_df['Team'] == home_match, 'ISO'].values[0]
+                        matches.append({
+                            "Target Offense": home_team_full,
+                            "Team ISO": iso,
+                            "Stadium": home_team_full,
+                            "Park Factor": park_factor,
+                            "Fade Angle": "Home Team"
+                        })
 
-        st.dataframe(match_df)
-    else:
-        st.info(
-            "No prime environment matchups today. The weak offenses are either resting or playing in hitter-friendly parks."
-        )
+            # Render the new table in Streamlit
+            st.write("### 🎯 Prime Environments (Weak Offense in Safe Park)")
+            if matches:
+                match_df = pd.DataFrame(matches)
+
+                # Sort so the absolute best environments (lowest ISO + lowest park factor) are at the top
+                match_df = match_df.sort_values(by=["Park Factor", "Team ISO"], ascending=[True, True])
+
+                st.dataframe(match_df, hide_index=True)
+            else:
+                st.info("No prime environment matchups today. The weak offenses are either resting or playing in hitter-friendly parks.")
 
 
 # --- Page Configuration ---
