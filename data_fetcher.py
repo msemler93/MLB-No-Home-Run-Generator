@@ -56,65 +56,28 @@ def get_power_fade_teams(season: int):
     import pybaseball as pyb
 
     try:
+        # Pull from BRef to avoid the FanGraphs 403 ban
         bref_data = pyb.batting_stats_bref(season)
 
         # 1. Standardize Team column name
         if "Tm" in bref_data.columns:
             bref_data.rename(columns={"Tm": "Team"}, inplace=True)
 
-        # 2. Filter out traded players to prevent double-counting
+        # 2. Filter out traded players to prevent double-counting totals
         bref_data = bref_data[~bref_data["Team"].str.contains(",", na=False)]
         bref_data = bref_data[bref_data["Team"] != "TOT"]
 
-        # 3. Fix the Two-Team Cities and Standardize Names
-        def map_team_names(row):
-            team = str(row.get("Team", "")).strip()
-            lg = str(row.get("Lg", "")).strip().upper()
-
-            # Split the shared cities by American League (AL) vs National League (NL)
-            if team == "Chicago":
-                return "CHW" if lg == "AL" else "CHC"
-            if team == "New York":
-                return "NYY" if lg == "AL" else "NYM"
-            if team == "Los Angeles":
-                return "LAA" if lg == "AL" else "LAD"
-
-            # Standardize the rest to 3-letter abbreviations so your app merges work downstream
-            mapping = {
-                "Arizona": "ARI",
-                "Atlanta": "ATL",
-                "Baltimore": "BAL",
-                "Boston": "BOS",
-                "Cincinnati": "CIN",
-                "Cleveland": "CLE",
-                "Colorado": "COL",
-                "Detroit": "DET",
-                "Houston": "HOU",
-                "Kansas City": "KCR",
-                "Miami": "MIA",
-                "Milwaukee": "MIL",
-                "Minnesota": "MIN",
-                "Philadelphia": "PHI",
-                "Pittsburgh": "PIT",
-                "San Diego": "SDP",
-                "San Francisco": "SFG",
-                "Seattle": "SEA",
-                "St. Louis": "STL",
-                "Tampa Bay": "TBR",
-                "Texas": "TEX",
-                "Toronto": "TOR",
-                "Washington": "WSN",
-                "Athletics": "OAK",
-            }
-            return mapping.get(team, team)
-
-        # Apply the mapping
-        bref_data["Team"] = bref_data.apply(map_team_names, axis=1)
+        # 3. THE MAGIC BULLET: Drop duplicate player rows
+        # BRef scrapers pull hidden HTML tables, causing players to be listed 2x.
+        if "Name" in bref_data.columns:
+            bref_data = bref_data.drop_duplicates(subset=["Name", "Team"])
 
         # 4. Mathematically correct aggregation: Sum the raw counting stats
         team_stats = (
             bref_data.groupby("Team")[["AB", "H", "2B", "3B", "HR"]].sum().reset_index()
         )
+
+        # Prevent division by zero
         team_stats["AB"] = team_stats["AB"].replace(0, 1)
 
         # 5. Calculate proper Team SLG and ISO
@@ -128,9 +91,11 @@ def get_power_fade_teams(season: int):
         team_stats["AVG"] = (team_stats["H"] / team_stats["AB"]).round(3)
         team_stats["ISO"] = (team_stats["SLG"] - team_stats["AVG"]).round(3)
 
-        # 6. Filter for the bottom third of the league
+        # 6. Filter for the bottom third of the league based on ISO
         iso_threshold = team_stats["ISO"].quantile(0.33)
         weak_power_df = team_stats[team_stats["ISO"] <= iso_threshold].copy()
+
+        # Sort by the weakest power
         weak_power_df = weak_power_df.sort_values("ISO", ascending=True)
 
         return weak_power_df[["Team", "ISO", "SLG", "HR"]]
