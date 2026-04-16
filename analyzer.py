@@ -156,9 +156,15 @@ def find_certified_plays(season_year=2026):
         is_elite_away = away_p and any(name in away_p for name in elite_pitcher_names)
         is_elite_home = home_p and any(name in home_p for name in elite_pitcher_names)
 
-        # Check if the offenses are weak power teams
-        is_weak_home = TEAM_MAPPING.get(home_team) in weak_power_teams
-        is_weak_away = TEAM_MAPPING.get(away_team) in weak_power_teams
+        # Check if the offenses are weak power teams using the universal aliases
+        is_weak_home = any(
+            alias in weak_power_teams
+            for alias in TEAM_ALIASES.get(home_team, [home_team])
+        )
+        is_weak_away = any(
+            alias in weak_power_teams
+            for alias in TEAM_ALIASES.get(away_team, [away_team])
+        )
 
         # Logic for "Certified" Matchup
         if (is_elite_away and is_weak_home) or (is_elite_home and is_weak_away):
