@@ -61,38 +61,38 @@ def get_stadium_weather(home_team_name):
         return {"temp": "Error", "wind": "Error", "advantage": False}
 
 
-# Standardizing team names between APIs
-TEAM_MAPPING = {
-    "Arizona Diamondbacks": "ARI",
-    "Atlanta Braves": "ATL",
-    "Baltimore Orioles": "BAL",
-    "Boston Red Sox": "BOS",
-    "Chicago Cubs": "CHC",
-    "Chicago White Sox": "CHW",
-    "Cincinnati Reds": "CIN",
-    "Cleveland Guardians": "CLE",
-    "Colorado Rockies": "COL",
-    "Detroit Tigers": "DET",
-    "Houston Astros": "HOU",
-    "Kansas City Royals": "KCR",
-    "Los Angeles Angels": "LAA",
-    "Los Angeles Dodgers": "LAD",
-    "Miami Marlins": "MIA",
-    "Milwaukee Brewers": "MIL",
-    "Minnesota Twins": "MIN",
-    "New York Mets": "NYM",
-    "New York Yankees": "NYY",
-    "Oakland Athletics": "OAK",
-    "Philadelphia Phillies": "PHI",
-    "Pittsburgh Pirates": "PIT",
-    "San Diego Padres": "SDP",
-    "San Francisco Giants": "SFG",
-    "Seattle Mariners": "SEA",
-    "St. Louis Cardinals": "STL",
-    "Tampa Bay Rays": "TBR",
-    "Texas Rangers": "TEX",
-    "Toronto Blue Jays": "TOR",
-    "Washington Nationals": "WSN",
+# Standardizing team names between APIs using universal aliases
+TEAM_ALIASES = {
+    "Arizona Diamondbacks": ["Arizona", "ARI"],
+    "Atlanta Braves": ["Atlanta", "ATL"],
+    "Baltimore Orioles": ["Baltimore", "BAL"],
+    "Boston Red Sox": ["Boston", "BOS"],
+    "Chicago Cubs": ["Chicago", "CHC"],
+    "Chicago White Sox": ["Chicago White Sox", "CHW"],
+    "Cincinnati Reds": ["Cincinnati", "CIN"],
+    "Cleveland Guardians": ["Cleveland", "CLE"],
+    "Colorado Rockies": ["Colorado", "COL"],
+    "Detroit Tigers": ["Detroit", "DET"],
+    "Houston Astros": ["Houston", "HOU"],
+    "Kansas City Royals": ["Kansas City", "KCR"],
+    "Los Angeles Angels": ["Los Angeles", "LAA"],
+    "Los Angeles Dodgers": ["Los Angeles", "LAD"],
+    "Miami Marlins": ["Miami", "MIA"],
+    "Milwaukee Brewers": ["Milwaukee", "MIL"],
+    "Minnesota Twins": ["Minnesota", "MIN"],
+    "New York Mets": ["New York", "NYM"],
+    "New York Yankees": ["New York", "NYY"],
+    "Oakland Athletics": ["Athletics", "Oakland", "OAK"],
+    "Philadelphia Phillies": ["Philadelphia", "PHI"],
+    "Pittsburgh Pirates": ["Pittsburgh", "PIT"],
+    "San Diego Padres": ["San Diego", "SDP"],
+    "San Francisco Giants": ["San Francisco", "SFG"],
+    "Seattle Mariners": ["Seattle", "SEA"],
+    "St. Louis Cardinals": ["St. Louis", "STL"],
+    "Tampa Bay Rays": ["Tampa Bay", "TBR"],
+    "Texas Rangers": ["Texas", "TEX"],
+    "Toronto Blue Jays": ["Toronto", "TOR"],
+    "Washington Nationals": ["Washington", "WSN"],
 }
 
 
@@ -171,9 +171,16 @@ def find_certified_plays(season_year=2026):
                 reason = "⚠️ Offense too dangerous"
             elif is_weak_home or is_weak_away:
                 reason = "⚠️ Pitcher not elite enough"
-            else:
-                reason = "❌ Matchup failed both"
-        # --- Final Classification ---
+        # Check if the offenses are weak power teams using the universal aliases
+        is_weak_home = any(
+            alias in weak_power_teams
+            for alias in TEAM_ALIASES.get(home_team, [home_team])
+        )
+        is_weak_away = any(
+            alias in weak_power_teams
+            for alias in TEAM_ALIASES.get(away_team, [away_team])
+        )
+
         data_to_save = {
             "pitcher": away_p if "Fading" in reason and home_team in reason else home_p,
             "vs": home_team if home_p == "" else away_team,
