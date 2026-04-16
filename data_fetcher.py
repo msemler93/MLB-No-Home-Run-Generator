@@ -53,57 +53,28 @@ def get_elite_gb_pitchers(season: int):
 def get_power_fade_teams(season: int):
     import streamlit as st
     import pandas as pd
-    import pybaseball as pyb
+    from pybaseball import team_batting
 
     try:
-        # --- THE CACHE NUKE ---
-        pyb.cache.enable()
-        pyb.cache.purge()
+        # Pulls clean, pre-aggregated team data for the current season from FanGraphs
+        team_data = team_batting(season)
 
-        bref_data = pyb.batting_stats_bref(season)
+        # Keep essential columns (FanGraphs natively uses 'Team', 'ISO', 'SLG', 'HR')
+        team_stats = team_data[["Team", "ISO", "SLG", "HR"]].copy()
 
-        def get_abbreviation(row):
-            tm = str(row.get('Tm', '')).strip()
-            lg = str(row.get('Lg', '')).strip().upper()
+        # Find the bottom third of the league based on ISO to strictly fade power
+        iso_threshold = team_stats["ISO"].quantile(0.33)
+        weak_power_df = team_stats[team_stats["ISO"] <= iso_threshold].copy()
 
-            if tm in ["CHC", "Cubs", "Chicago Cubs"]: return "CHC"
-            if tm in ["CHW", "White Sox", "Chicago White Sox"]: return "CHW"
-            if tm in ["NYY", "Yankees", "New York Yankees"]: return "NYY"
-            if tm in ["NYM", "Mets", "New York Mets"]: return "NYM"
-            if tm in ["LAD", "Dodgers", "Los Angeles Dodgers"]: return "LAD"
-            if tm in ["LAA", "Angels", "Los Angeles Angels"]: return "LAA"
-            if tm in ["OAK", "Athletics", "Oakland Athletics"]: return "OAK"
-
-            if tm == "Chicago": return "CHW" if lg == "AL" else "CHC"
-            if tm == "New York": return "NYY" if lg == "AL" else "NYM"
-            if tm == "Los Angeles": return "LAA" if lg == "AL" else "LAD"
-
-            mapping = {
-                "Arizona": "ARI", "Diamondbacks": "ARI", "Atlanta": "ATL", "Braves": "ATL",
-                "Baltimore": "BAL", "Orioles": "BAL", "Boston": "BOS", "Red Sox": "BOS",
-                "Cincinnati": "CIN", "Reds": "CIN", "Cleveland": "CLE", "Guardians": "CLE",
-                "Colorado": "COL", "Rockies": "COL", "Detroit": "DET", "Tigers": "DET",
-                "Houston": "HOU", "Astros": "HOU", "Kansas City": "KCR", "Royals": "KCR",
-                "Miami": "MIA", "Marlins": "MIA", "Milwaukee": "MIL", "Brewers": "MIL",
-                "Minnesota": "MIN", "Twins": "MIN", "Philadelphia": "PHI", "Phillies": "PHI",
-                "Pittsburgh": "PIT", "Pirates": "PIT", "San Diego": "SDP", "Padres": "SDP",
-                "San Francisco": "SFG", "Giants": "SFG", "Seattle": "SEA", "Mariners": "SEA",
-                "St. Louis": "STL", "Cardinals": "STL", "Tampa Bay": "TBR", "Rays": "TBR",
-                "Texas": "TEX", "Rangers": "TEX", "Toronto": "TOR", "Blue Jays": "TOR",
-                "Washington": "WSN", "Nationals": "WSN"
-            }
-            return mapping.get(tm, tm)
-
-        bref_data["Team"] = bref_data.apply(get_abbreviation, axis=1)
-        bref_data = bref_data[bref_data["Team"] != "TOT"]
-
-        team_batting = bref_data.groupby("Team").agg({"SLG": "mean", "HR": "sum"}).reset_index()
-
-        slg_threshold = team_batting["SLG"].quantile(0.33)
-        weak_power_df = team_batting[team_batting["SLG"] <= slg_threshold].copy()
+        # Clean up decimals for the display
+        weak_power_df["ISO"] = weak_power_df["ISO"].round(3)
         weak_power_df["SLG"] = weak_power_df["SLG"].round(3)
 
-        return weak_power_df[["Team", "SLG", "HR"]]
+        # Sort by the weakest power
+        weak_power_df = weak_power_df.sort_values("ISO", ascending=True)
+
+        # Returning SLG as well just in case your frontend UI expects it
+        return weak_power_df[["Team", "ISO", "SLG", "HR"]]
 
     except Exception as e:
         st.error(f"🚨 BATTING DATA CRASH: {e}")
