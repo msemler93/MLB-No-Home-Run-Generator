@@ -187,19 +187,28 @@ def get_safe_parks(threshold: int = 100):
         "Washington Nationals": (38.8730, -77.0074),
     }
 
-    def get_stadium_weather(home_team_name):
-        """Fetches live temperature and wind speed for the home stadium."""
+    def get_stadium_weather(home_team_name, game_hour_local=19):
+        """
+        Fetches projected weather for the stadium at a specific local hour.
+        game_hour_local: integer 0-23 (defaults to 19 for 7:00 PM local time)
+        """
         if home_team_name not in STADIUM_COORDS:
             return {"temp": "N/A", "wind": "N/A", "advantage": False}
 
         lat, lon = STADIUM_COORDS[home_team_name]
-        # Open-Meteo URL for current Temp (Fahrenheit) and Wind (MPH)
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph"
+
+        # Switched 'current' to 'hourly' and added 'timezone=auto' to sync with the stadium's local time
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&hourly=temperature_2m,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto&forecast_days=1"
 
         try:
+            import requests
+
             response = requests.get(url).json()
-            temp = response["current"]["temperature_2m"]
-            wind = response["current"]["wind_speed_10m"]
+
+            # The 'hourly' arrays contain 24 items (one for each hour of the day)
+            # We index directly using the game_hour_local (0 = midnight, 19 = 7 PM)
+            temp = response["hourly"]["temperature_2m"][game_hour_local]
+            wind = response["hourly"]["wind_speed_10m"][game_hour_local]
 
             # Determine if weather suppresses power (Temp under 65 OR High Wind)
             is_advantage = temp < 65 or wind > 10
