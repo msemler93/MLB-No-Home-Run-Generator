@@ -104,7 +104,7 @@ def display_prime_environments(daily_games, weak_power_df, safe_parks_dict):
     # Render the new table in Streamlit
     st.write("### 🎯 Prime Environments (Weak Offense in Safe Park)")
     if matches:
-        match_df = pd.DataFrame(matches)
+        match_df = pd.DataFrame(matches).drop_duplicates()
 
         # Sort so the absolute best environments (lowest ISO + lowest park factor) are at the top
         match_df = match_df.sort_values(
