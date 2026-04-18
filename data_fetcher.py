@@ -97,6 +97,39 @@ def get_power_fade_teams(season: int):
 
         # Sort by the weakest power
         weak_power_df = weak_power_df.sort_values("ISO", ascending=True)
+        # 7. Map short names to full names to match the schedule and park factors
+        team_name_map = {
+            "Boston": "Boston Red Sox",
+            "San Francisco": "San Francisco Giants",
+            "Seattle": "Seattle Mariners",
+            "Kansas City": "Kansas City Royals",
+            "Tampa Bay": "Tampa Bay Rays",
+            "Athletics": "Oakland Athletics",
+            "Oakland": "Oakland Athletics",
+            "Cincinnati": "Cincinnati Reds",
+            "Toronto": "Toronto Blue Jays",
+            "Detroit": "Detroit Tigers",
+            "Washington": "Washington Nationals",
+            "Pittsburgh": "Pittsburgh Pirates",
+            "Miami": "Miami Marlins",
+            "St. Louis": "St. Louis Cardinals",
+            "Cleveland": "Cleveland Guardians",
+            "San Diego": "San Diego Padres",
+            "Baltimore": "Baltimore Orioles",
+            "Texas": "Texas Rangers",
+            "Colorado": "Colorado Rockies",
+            "Milwaukee": "Milwaukee Brewers",
+            "Philadelphia": "Philadelphia Phillies",
+            "Atlanta": "Atlanta Braves",
+            "Minnesota": "Minnesota Twins",
+            "Houston": "Houston Astros",
+            "Arizona": "Arizona Diamondbacks",
+            # Add any specific Chicago/NY/LA variations your scraper outputs if they break
+        }
+
+        weak_power_df["Team"] = (
+            weak_power_df["Team"].map(team_name_map).fillna(weak_power_df["Team"])
+        )
 
         return weak_power_df[["Team", "ISO", "SLG", "HR"]]
 
