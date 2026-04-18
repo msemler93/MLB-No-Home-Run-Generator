@@ -61,7 +61,7 @@ def display_prime_environments(daily_games, weak_power_df, safe_parks_dict):
             park_factor = safe_parks_dict[home_team_full]
 
             # 2. Check if the Away Team is a weak offense stepping into the bad park
-            away_aliases = team_aliases.get(away_team_full, [away_team_full])
+            away_aliases = team_aliases.get(away_team_full, []) + [away_team_full]
             # Find which alias is actually matching your dataframe
             away_match = next(
                 (alias for alias in away_aliases if alias in weak_teams_list), None
@@ -82,7 +82,7 @@ def display_prime_environments(daily_games, weak_power_df, safe_parks_dict):
                 )
 
             # 3. Check if the Home Team is a weak offense (they have to hit in their own bad park!)
-            home_aliases = team_aliases.get(home_team_full, [home_team_full])
+            home_aliases = team_aliases.get(home_team_full, []) + [home_team_full]
             home_match = next(
                 (alias for alias in home_aliases if alias in weak_teams_list), None
             )
