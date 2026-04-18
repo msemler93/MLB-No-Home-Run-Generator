@@ -95,6 +95,13 @@ def get_todays_schedule():
         response = requests.get(url, params=params)
         data = response.json()
 
+        # 🚨 NEW FAILSILVER: If the API sends an error message instead of games, print it to the screen!
+        if isinstance(data, dict) and "message" in data:
+            import streamlit as st
+
+            st.error(f"API BLOCKED US: {data['message']}")
+            return pd.DataFrame()
+
         matchups = []
         for game in data:
             matchups.append(
@@ -104,4 +111,7 @@ def get_todays_schedule():
         return pd.DataFrame(matchups)
 
     except Exception as e:
+        import streamlit as st
+
+        st.error(f"DATA CRASH: {e}")
         return pd.DataFrame()

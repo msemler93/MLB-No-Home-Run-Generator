@@ -247,17 +247,6 @@ weak_teams = data_fetcher.get_power_fade_teams(CURRENT_SEASON)
 # Get the safe parks
 safe_parks = data_fetcher.get_safe_parks(100)
 
-# Get today's schedule (UPDATE THIS LINE to match your actual odds_api function)
-daily_schedule_df = odds_api.get_todays_schedule()
-
-# 🚨 ADD THIS LINE TEMPORARILY RIGHT HERE:
-st.write("### 🕵️ Raw API Data Check", daily_schedule_df)
-
-# --- 2. DISPLAY THE NEW PRIME ENVIRONMENTS TABLE ---
-if not weak_teams.empty:
-    display_prime_environments(daily_schedule_df, weak_teams, safe_parks)
-
-    
 # --- 2. DISPLAY THE NEW PRIME ENVIRONMENTS TABLE ---
 if not weak_teams.empty:
     display_prime_environments(daily_schedule_df, weak_teams, safe_parks)
