@@ -13,6 +13,7 @@ MARKETS = "totals"
 BOOKMAKERS = "draftkings,fanduel"
 
 
+@st.cache_data(ttl=10800)
 def get_low_total_games(threshold: float = 8.0):
     """
     Fetches today's MLB games and returns a dictionary of teams
@@ -71,6 +72,7 @@ def get_low_total_games(threshold: float = 8.0):
         return {}
 
 
+@st.cache_data(ttl=10800)
 def get_todays_schedule():
     """
     Fetches a clean DataFrame of today's matchups (Away vs Home)
