@@ -224,10 +224,8 @@ safe_parks = data_fetcher.get_safe_parks(100)
 # Get today's schedule (UPDATE THIS LINE to match your actual odds_api function)
 daily_schedule_df = odds_api.get_todays_schedule()
 
-
 # --- 2. DISPLAY THE NEW PRIME ENVIRONMENTS TABLE ---
-# Now that the variables are defined, the function will work perfectly
-if not weak_teams.empty and not daily_schedule_df.empty:
+if not weak_teams.empty:
     display_prime_environments(daily_schedule_df, weak_teams, safe_parks)
 
 st.divider()
