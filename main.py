@@ -14,62 +14,93 @@ def display_prime_environments(daily_games, weak_power_df, safe_parks_dict):
 
     # Map full team names to all possible variations they might appear as in your tables
     # This makes the app bulletproof whether you use 3-letter codes or BRef city names
-    team_aliases = {
-        "Arizona Diamondbacks": ["Arizona", "ARI"],
-        "Atlanta Braves": ["Atlanta", "ATL"],
-        "Baltimore Orioles": ["Baltimore", "BAL"],
-        "Boston Red Sox": ["Boston", "BOS"],
-        "Chicago Cubs": ["Chicago", "CHC"],
-        "Chicago White Sox": ["Chicago White Sox", "CHW"],
-        "Cincinnati Reds": ["Cincinnati", "CIN"],
-        "Cleveland Guardians": ["Cleveland", "CLE"],
-        "Colorado Rockies": ["Colorado", "COL"],
-        "Detroit Tigers": ["Detroit", "DET"],
-        "Houston Astros": ["Houston", "HOU"],
-        "Kansas City Royals": ["Kansas City", "KCR"],
-        "Los Angeles Angels": ["Los Angeles", "LAA"],
-        "Los Angeles Dodgers": ["Los Angeles", "LAD"],
-        "Miami Marlins": ["Miami", "MIA"],
-        "Milwaukee Brewers": ["Milwaukee", "MIL"],
-        "Minnesota Twins": ["Minnesota", "MIN"],
-        "New York Mets": ["New York", "NYM"],
-        "New York Yankees": ["New York", "NYY"],
-        "Oakland Athletics": ["Athletics", "Oakland", "OAK"],
-        "Philadelphia Phillies": ["Philadelphia", "PHI"],
-        "Pittsburgh Pirates": ["Pittsburgh", "PIT"],
-        "San Diego Padres": ["San Diego", "SDP"],
-        "San Francisco Giants": ["San Francisco", "SFG"],
-        "Seattle Mariners": ["Seattle", "SEA"],
-        "St. Louis Cardinals": ["St. Louis", "STL"],
-        "Tampa Bay Rays": ["Tampa Bay", "TBR"],
-        "Texas Rangers": ["Texas", "TEX"],
-        "Toronto Blue Jays": ["Toronto", "TOR"],
-        "Washington Nationals": ["Washington", "WSN"],
+    # Master Standardizer: Map every possible short name directly to the full name
+    name_standardizer = {
+        "Arizona": "Arizona Diamondbacks",
+        "ARI": "Arizona Diamondbacks",
+        "Atlanta": "Atlanta Braves",
+        "ATL": "Atlanta Braves",
+        "Baltimore": "Baltimore Orioles",
+        "BAL": "Baltimore Orioles",
+        "Boston": "Boston Red Sox",
+        "BOS": "Boston Red Sox",
+        "Chicago": "Chicago Cubs",
+        "CHC": "Chicago Cubs",
+        "Chicago White Sox": "Chicago White Sox",
+        "CHW": "Chicago White Sox",
+        "Cincinnati": "Cincinnati Reds",
+        "CIN": "Cincinnati Reds",
+        "Cleveland": "Cleveland Guardians",
+        "CLE": "Cleveland Guardians",
+        "Colorado": "Colorado Rockies",
+        "COL": "Colorado Rockies",
+        "Detroit": "Detroit Tigers",
+        "DET": "Detroit Tigers",
+        "Houston": "Houston Astros",
+        "HOU": "Houston Astros",
+        "Kansas City": "Kansas City Royals",
+        "KCR": "Kansas City Royals",
+        "Los Angeles": "Los Angeles Angels",
+        "LAA": "Los Angeles Angels",
+        "Los Angeles Dodgers": "Los Angeles Dodgers",
+        "LAD": "Los Angeles Dodgers",
+        "Miami": "Miami Marlins",
+        "MIA": "Miami Marlins",
+        "Milwaukee": "Milwaukee Brewers",
+        "MIL": "Milwaukee Brewers",
+        "Minnesota": "Minnesota Twins",
+        "MIN": "Minnesota Twins",
+        "New York": "New York Mets",
+        "NYM": "New York Mets",
+        "New York Yankees": "New York Yankees",
+        "NYY": "New York Yankees",
+        "Athletics": "Oakland Athletics",
+        "Oakland": "Oakland Athletics",
+        "OAK": "Oakland Athletics",
+        "Philadelphia": "Philadelphia Phillies",
+        "PHI": "Philadelphia Phillies",
+        "Pittsburgh": "Pittsburgh Pirates",
+        "PIT": "Pittsburgh Pirates",
+        "San Diego": "San Diego Padres",
+        "SDP": "San Diego Padres",
+        "San Francisco": "San Francisco Giants",
+        "SFG": "San Francisco Giants",
+        "Seattle": "Seattle Mariners",
+        "SEA": "Seattle Mariners",
+        "St. Louis": "St. Louis Cardinals",
+        "STL": "St. Louis Cardinals",
+        "Tampa Bay": "Tampa Bay Rays",
+        "TBR": "Tampa Bay Rays",
+        "TB": "Tampa Bay Rays",
+        "Texas": "Texas Rangers",
+        "TEX": "Texas Rangers",
+        "Toronto": "Toronto Blue Jays",
+        "TOR": "Toronto Blue Jays",
+        "Washington": "Washington Nationals",
+        "WSN": "Washington Nationals",
+        "WSH": "Washington Nationals",
     }
 
     matches = []
-
-    # Grab the list of weak teams currently displayed in your table
     weak_teams_list = weak_power_df["Team"].tolist()
 
     for index, game in daily_games.iterrows():
-        away_team_full = game["Away"]
-        home_team_full = game["Home"]
+        # Standardize names immediately before doing any checks
+        raw_away = game["Away"]
+        raw_home = game["Home"]
+
+        # If the name isn't in the standardizer, it just keeps the raw name (like full names)
+        away_team_full = name_standardizer.get(raw_away, raw_away)
+        home_team_full = name_standardizer.get(raw_home, raw_home)
 
         # 1. Check if the game is being played in a Pitcher-Friendly Park
         if home_team_full in safe_parks_dict:
             park_factor = safe_parks_dict[home_team_full]
 
             # 2. Check if the Away Team is a weak offense stepping into the bad park
-            away_aliases = team_aliases.get(away_team_full, []) + [away_team_full]
-            # Find which alias is actually matching your dataframe
-            away_match = next(
-                (alias for alias in away_aliases if alias in weak_teams_list), None
-            )
-
-            if away_match:
+            if away_team_full in weak_teams_list:
                 iso = weak_power_df.loc[
-                    weak_power_df["Team"] == away_match, "ISO"
+                    weak_power_df["Team"] == away_team_full, "ISO"
                 ].values[0]
                 matches.append(
                     {
@@ -81,15 +112,10 @@ def display_prime_environments(daily_games, weak_power_df, safe_parks_dict):
                     }
                 )
 
-            # 3. Check if the Home Team is a weak offense (they have to hit in their own bad park!)
-            home_aliases = team_aliases.get(home_team_full, []) + [home_team_full]
-            home_match = next(
-                (alias for alias in home_aliases if alias in weak_teams_list), None
-            )
-
-            if home_match:
+            # 3. Check if the Home Team is a weak offense (hitting in their own bad park)
+            if home_team_full in weak_teams_list:
                 iso = weak_power_df.loc[
-                    weak_power_df["Team"] == home_match, "ISO"
+                    weak_power_df["Team"] == home_team_full, "ISO"
                 ].values[0]
                 matches.append(
                     {
