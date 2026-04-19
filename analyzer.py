@@ -89,9 +89,9 @@ TEAM_ALIASES = {
     "San Francisco Giants": ["San Francisco", "SFG"],
     "Seattle Mariners": ["Seattle", "SEA"],
     "St. Louis Cardinals": ["St. Louis", "STL"],
-    "Tampa Bay Rays": ["Tampa Bay", "TBR"],
-    "Texas Rangers": ["Texas", "TEX"],
-    "Toronto Blue Jays": ["Toronto", "TOR"],
+    "Seattle Mariners": ["Seattle Mariners", "Seattle", "SEA"],
+    "Tampa Bay Rays": ["Tampa Bay Rays", "Tampa Bay", "TBR", "TB"],
+    "Toronto Blue Jays": ["Toronto Blue Jays", "Toronto", "TOR"],
     "Washington Nationals": ["Washington", "WSN"],
 }
 
@@ -160,11 +160,11 @@ def find_certified_plays(season_year=2026):
         # Check if the offenses are weak power teams using the universal aliases
         is_weak_home = any(
             alias in weak_power_teams
-            for alias in TEAM_ALIASES.get(home_team, [home_team])
+            for alias in [home_team] + TEAM_ALIASES.get(home_team, [])
         )
         is_weak_away = any(
             alias in weak_power_teams
-            for alias in TEAM_ALIASES.get(away_team, [away_team])
+            for alias in [away_team] + TEAM_ALIASES.get(away_team, [])
         )
 
         # Logic for "Certified" Matchup
