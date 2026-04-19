@@ -132,6 +132,7 @@ def find_certified_plays(season_year=2026):
         # --- Start the Scorecard for this game ---
         score = 0
         passed_filters = []
+        reason = "Skipped - Completely neutral matchup"  # ADD THIS RIGHT HERE
 
         # 1. Weather Check (Fetch this first so we have the data)
         weather_data = get_stadium_weather(home_team)
