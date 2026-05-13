@@ -146,7 +146,7 @@ def get_park_factors():
     return {
         "Arizona Diamondbacks": 96,
         "Atlanta Braves": 105,
-        "Baltimore Orioles": 80,
+        "Baltimore Orioles": 102, # Updated for 2025/2026 dimension changes
         "Boston Red Sox": 102,
         "Chicago Cubs": 98,
         "Chicago White Sox": 102,
